@@ -111,7 +111,13 @@ namespace morph {
                     //std::cout << "Convert colour from vdcopy1[i]: " << vdcopy1[i] << ", vdcopy2[i]: " << vdcopy2[i] << std::endl;
                     clr = this->cm.convert (vdcopy1[i], vdcopy2[i]);
                 }
-                if (this->sizeFactor == Flt{0}) {
+                if (!radii.isempty()) {
+                    if constexpr (draw_spheres_as_geodesics) {
+                        this->template computeSphereGeoFast<float, 2> ((*this->dataCoords)[i], clr, radii[i]);
+                    } else {
+                        this->computeSphere ((*this->dataCoords)[i], clr, radii[i], 16, 20);
+                    }
+                } else if (this->sizeFactor == Flt{0}) {
                     if constexpr (draw_spheres_as_geodesics) {
                         // Slower than regular computeSphere(). 2 iterations gives 320 faces
                         this->template computeSphereGeoFast<float, 2> ((*this->dataCoords)[i], clr, this->radiusFixed);
