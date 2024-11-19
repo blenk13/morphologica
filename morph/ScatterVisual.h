@@ -111,11 +111,11 @@ namespace morph {
                     //std::cout << "Convert colour from vdcopy1[i]: " << vdcopy1[i] << ", vdcopy2[i]: " << vdcopy2[i] << std::endl;
                     clr = this->cm.convert (vdcopy1[i], vdcopy2[i]);
                 }
-                if (!radii.isempty()) {
+                if (!this->radii.empty()) {
                     if constexpr (draw_spheres_as_geodesics) {
-                        this->template computeSphereGeoFast<float, 2> ((*this->dataCoords)[i], clr, radii[i]);
+                        this->template computeSphereGeoFast<float, 2> ((*this->dataCoords)[i], clr, this->radii[i]);
                     } else {
-                        this->computeSphere ((*this->dataCoords)[i], clr, radii[i], 16, 20);
+                        this->computeSphere ((*this->dataCoords)[i], clr, this->radii[i], 16, 20);
                     }
                 } else if (this->sizeFactor == Flt{0}) {
                     if constexpr (draw_spheres_as_geodesics) {
@@ -152,9 +152,20 @@ namespace morph {
             this->reinit();
         }
 
+        void setRadius (morph::vvec<Flt>& r)
+        {
+            if (r.size() != this->dataCoords->size()) {
+                std::cerr << "Vector of radius sizes is not the same as the number of data points." << std::endl;
+            }
+            this->radii = r;
+            std::cout << "radii in morph code: " << this->radii << std::endl;
+            this->reinit();
+        }
+
         //! Change this to get larger or smaller spheres.
         Flt radiusFixed = Flt{0.05};
         Flt sizeFactor = Flt{0};
+        morph::vvec<Flt> radii = {};
 
         // Hues for colour control with vectorData
         float hue1 = 0.1f;
