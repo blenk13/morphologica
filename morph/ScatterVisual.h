@@ -158,7 +158,6 @@ namespace morph {
                 std::cerr << "Vector of radius sizes is not the same as the number of data points." << std::endl;
             }
             this->radii = r;
-            std::cout << "radii in morph code: " << this->radii << std::endl;
             this->reinit();
         }
 
