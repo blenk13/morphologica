@@ -1,7 +1,7 @@
 #include <cstdint>
 #include <morph/VisualModel.h>
 #include <morph/ColourMap.h>
-#include <morph/Scale.h>
+#include <morph/scale.h>
 #include <morph/vec.h>
 #include <morph/vvec.h>
 #include <morph/healpix/healpix_bare.hpp>
@@ -25,16 +25,20 @@ namespace morph {
 
         // Update the VisualModel, changing only colours if that's enough, or doing a
         // full rebuild if we're displaying relief.
-        void update()
+        void reinit()
         {
-            if (this->relief == true) { this->reinit(); }
-            else { this->updateColours(); }
+            if (this->relief == true) { morph::VisualModel<glver>::reinit(); }
+            else { this->reinitColours(); }
         }
 
-        void updateColours()
+        void reinitColours()
         {
-            this->vertexColors.clear(); // could potentially just replace values
             size_t n_data = this->n_pixels();
+
+            if (this->vertexColors.size() < n_data * 3) {
+                throw std::runtime_error ("vertexColors is not big enough to reinitColours()");
+            }
+
             // Scale data
             morph::vvec<float> scaled_data (this->pixeldata);
             if (this->colourScale.do_autoscale == true) { this->colourScale.reset(); }
@@ -43,7 +47,9 @@ namespace morph {
             // Re-colour
             for (size_t i = 0u; i < n_data; ++i) {
                 auto c = this->cm.convert (scaled_data[i]);
-                this->vertex_push (c, this->vertexColors);
+                this->vertexColors[3*i] = c[0];
+                this->vertexColors[3*i+1] = c[1];
+                this->vertexColors[3*i+2] = c[2];
             }
 
             // Lastly, this call copies vertexColors (etc) into the OpenGL memory space
@@ -423,6 +429,30 @@ namespace morph {
             if (this->k == 0) { return; }
             this->healpix_triangles_by_nest();
             if (this->show_spheres == true) { this->vertex_spheres(); }
+            if (this->indicate_axes == true) { this->draw_coordaxes(); }
+        }
+
+        // Draw a small set of coordinate arrows with origin at pixel 0
+        void draw_coordaxes()
+        {
+            morph::vec<float> vpf0 = {0, 0, this->r};
+
+            // draw tubes
+            float tlen = this->r * 0.1f;
+            float tlen2 = this->r * 0.05f;
+            float tthk = this->r * 0.005f;
+
+            this->computeCone (vpf0 + (this->uz * tthk/2),
+                               vpf0 + (this->uz * tlen),
+                               0.0f, morph::colour::blue2, tthk);
+
+            this->computeCone (vpf0 + this->ux * tthk * 1.1f + this->uz * tthk,
+                               vpf0 + this->ux * tlen2 + this->uz * tthk,
+                               0.0f, morph::colour::crimson, tthk/2);
+
+            this->computeCone (vpf0 + this->uy * tthk * 1.1f + this->uz * tthk,
+                               vpf0 + this->uy * tlen2 + this->uz * tthk,
+                               0.0f, morph::colour::springgreen2, tthk/2);
         }
 
         int64_t n_pixels() { return 12 * this->nside * this->nside; }
@@ -460,7 +490,7 @@ namespace morph {
         morph::vvec<T> pixeldata;
 
         // A colour scaling
-        morph::Scale<T> colourScale;
+        morph::scale<T> colourScale;
 
         // A colourmap to translate pixeldata into colours
         morph::ColourMap<T> cm;
@@ -469,7 +499,7 @@ namespace morph {
         bool relief = false;
 
         // A scaling for pixeldata -> additional radius for relief
-        morph::Scale<T> reliefScale;
+        morph::scale<T> reliefScale;
 
         // Show spheres at vertex locations? (mainly for debug)
         bool show_spheres = false;
@@ -479,6 +509,9 @@ namespace morph {
 
         // Show spheres at face locations? (mainly for debug)
         bool show_face_spheres = false;
+
+        // Show a little coordinate axes set indicating directions?
+        bool indicate_axes = false;
 
     private:
         // How many sides for the healpix? This is a choice of the user. Default to 3.

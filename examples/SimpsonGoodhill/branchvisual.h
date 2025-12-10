@@ -10,16 +10,9 @@
  */
 #pragma once
 
-#ifndef USE_GLEW
-#ifdef __OSX__
-# include <OpenGL/gl3.h>
-#else
-# include <GL3/gl3.h>
-#endif
-#endif
 #include <morph/VisualModel.h>
 #include <morph/vec.h>
-#include <morph/Scale.h>
+#include <morph/scale.h>
 #include <vector>
 #include <array>
 
@@ -36,7 +29,7 @@ public:
         this->viewmatrix.translate (this->mv_offset);
     }
 
-    morph::Scale<Flt, Flt> EphA_scale;
+    morph::scale<Flt, Flt> EphA_scale;
 
     void initializeVertices()
     {

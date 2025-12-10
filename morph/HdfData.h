@@ -25,7 +25,7 @@
 #include <morph/vvec.h>
 #include <morph/tools.h>
 
-#ifdef __WIN__
+#ifdef _MSC_VER
 #define __PRETTY_FUNCTION__ __FUNCSIG__
 #endif
 
@@ -719,7 +719,7 @@ namespace morph {
          */
         void process_groups (const char* path)
         {
-            std::vector<std::string> pbits = morph::Tools::stringToVector (path, "/");
+            std::vector<std::string> pbits = morph::tools::stringToVector (path, "/");
             unsigned int numgroups = pbits.size() - 1;
             if (numgroups > 1) { // There's always the first, empty (root) group
                 std::string groupstr("");

@@ -37,12 +37,12 @@ namespace morph {
         std::array<float, 3> frame_clr = {0,0,0};
         float frame_width = 0.01f;
         // If true, shift the model so that the centroid of the CurvyTelly is the centre of the
-        // model. Don't confuse with GridVisual::centralize.
+        // model. Don't confuse with the option gridvisual_flags::centralize.
         bool centroidize = false;
 
         // Note constructor forces GridVisual::centralize to be true, which is important when drawing a curvy CartGrid
         CurvyTellyVisual(const morph::Grid<I, C>* _cg, const morph::vec<float> _offset)
-            : morph::GridVisual<T, I, C, glver>(_cg, _offset) { this->centralize = true; }
+            : morph::GridVisual<T, I, C, glver>(_cg, _offset) { this->centralize (true); }
 
         void drawcurvygrid()
         {
@@ -50,7 +50,7 @@ namespace morph {
             float hx = 0.5f * dx[0];
             float vy = 0.5f * dx[1];
 
-            unsigned int nrect = this->grid->n;
+            unsigned int nrect = this->grid->n();
             this->idx = 0;
 
             if (this->scalarData != nullptr) {
@@ -285,12 +285,12 @@ namespace morph {
             }
         }
 
-        virtual void initializeVertices()
+        void initializeVertices()
         {
             // Compute an offset (in Grid frame of ref) to ensure that the curved representation of
             // the Grid has it's centre at 0 degrees. Turn centralize on/off to see the
             // difference. It's true by default.
-            if (this->centralize == true) {
+            if (this->options.test (morph::gridvisual_flags::centralize) == true) {
                 this->centering_offset = -this->grid->centre().plus_one_dim();
             }
             this->drawcurvygrid();

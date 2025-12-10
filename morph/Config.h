@@ -11,18 +11,19 @@
 #include <nlohmann/json.hpp>
 #include <morph/tools.h>
 #include <morph/vvec.h>
+#include <morph/vec.h>
 #include <list>
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <iostream>
 #include <stdexcept>
-#ifndef __WIN__
+#ifndef _MSC_VER
 # include <morph/Process.h>
 #endif
 
 namespace morph {
-#ifndef __WIN__
+#ifndef _MSC_VER
     //! Callbacks class extends ProcessCallbacks
     class ConfigProcessCallbacks : public ProcessCallbacks
     {
@@ -75,7 +76,7 @@ namespace morph {
             } // else We are creating a new Config, with no pre-existing content
         }
 
-#ifndef __WIN__
+#ifndef _MSC_VER
         /*!
          * Launch git sub-processes to determine info about the current
          * repository. Intended for use with code that will save a Json formatted log of
@@ -214,7 +215,7 @@ namespace morph {
                 this->root["git_branch"] = "unknown";
             }
         }
-#endif // __WIN__
+#endif // _MSC_VER
 
         void write() { this->write (this->thefile); }
 
@@ -279,7 +280,7 @@ namespace morph {
                 if ((pos = arg.find ("-co:")) == 0) {
                     std::string arg_ss = arg.substr (4);
                     // Split arg based on '='
-                    std::vector<std::string> co = morph::Tools::stringToVector (arg_ss, std::string("="));
+                    std::vector<std::string> co = morph::tools::stringToVector (arg_ss, std::string("="));
                     if (co.size() >= 2) {
                         std::cout << "Override parameter '" << co[0] << "' with value '" << co[1] << "'\n";
                         //...so stick with using a map
@@ -377,6 +378,21 @@ namespace morph {
             morph::vvec<T> rtn (ar.size(), T{0});
             typename morph::vvec<T>::size_type i = 0U;
             for (auto el : ar) { rtn[i++] = static_cast<T>(el); }
+            return rtn;
+        }
+
+        // Get an array of numbers as a morph::vec.
+        template <typename T, std::size_t N>
+        morph::vec<T, N> getvec (const std::string& arrayname) const
+        {
+            nlohmann::json ar;
+            if (this->root.contains(arrayname)) { ar = this->root[arrayname]; }
+            morph::vec<T, N> rtn = {T{0}};
+            auto el = ar.begin();
+            for (std::size_t i = 0; i < N && i < ar.size(); ++i) {
+                rtn[i] = static_cast<T>(*el);
+                el++;
+            }
             return rtn;
         }
 

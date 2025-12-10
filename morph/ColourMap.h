@@ -5,12 +5,15 @@
 #include <morph/lenthe_colormap.hpp>  // William Lenthe's implementation of perceptually uniform colour maps
 #include <morph/colourmaps_cet.h>     // Colour map tables from CET
 
+#include <string_view>
 #include <stdexcept>
 #include <cmath>
 #include <cstdint>
 #include <morph/tools.h>
 #include <morph/vec.h>
 #include <morph/mathconst.h>
+#include <morph/flags.h>
+#include <morph/crc32.h>
 
 namespace morph {
 
@@ -196,43 +199,33 @@ namespace morph {
     // A flags class for ColourMaps, to flag features
     enum class ColourMapFlags : uint32_t
     {
-        none                   =      0x0,
-        one_d                  =      0x1,
-        two_d                  =      0x2,
-        three_d                =      0x4,
-        sequential             =      0x8, // sequential/linear
-        cyclic                 =     0x10,
-        disc                   =     0x20,
-        perceptually_uniform   =     0x40,
-        colourblind_friendly   =     0x80,
-        divergent              =    0x100,
-        rainbow                =    0x200,
-        isoluminant            =    0x400,
-        multisequential        =    0x800,
-        whites                 =   0x1000,
-        reds                   =   0x2000,
-        blues                  =   0x4000, // Flag 15
-        greens                 =   0x8000,
-        yellows                =  0x10000,
-        pinks                  =  0x20000,
-        purples                =  0x40000,
-        greys                  =  0x80000,
+        one_d,
+        two_d,
+        three_d,
+        sequential, // sequential/linear
+        cyclic,
+        disc,
+        perceptually_uniform,
+        colourblind_friendly,
+        divergent,
+        rainbow,
+        isoluminant,
+        multisequential,
+        whites,
+        reds,
+        blues,      // Flag 15
+        greens,
+        yellows,
+        pinks,
+        purples,
+        greys
     };
-    // Bitwise operators for ColourMapFlags
-    ColourMapFlags operator| (const ColourMapFlags& lhs, const ColourMapFlags& rhs)
-    {
-        return static_cast<ColourMapFlags>(static_cast<uint32_t>(lhs) | static_cast<uint32_t>(rhs));
-    }
-    bool operator&(const ColourMapFlags& lhs, const ColourMapFlags& rhs)
-    {
-        return 0x0 != (static_cast<uint32_t>(lhs) & static_cast<uint32_t>(rhs));
-    }
 
-    // A sort of constructor
-    morph::ColourMapFlags makeColourMapFlags (const morph::ColourMapType t)
+    // Return a set of ColourMapFlags suitable for ColourMapType t
+    morph::flags<morph::ColourMapFlags> makeColourMapFlags (const morph::ColourMapType t)
     {
-        // Logic to create ColourMapFlags
-        morph::ColourMapFlags f = ColourMapFlags::none;
+        // Logic to create default flags
+        morph::flags<morph::ColourMapFlags> f(uint32_t{0});
 
         // Dimensionality
         if (t == ColourMapType::DiscFourWhite
@@ -241,14 +234,14 @@ namespace morph {
             || t == ColourMapType::DiscSixBlack
             || t == ColourMapType::HSV
             || t == ColourMapType::Duochrome) {
-            f = f | ColourMapFlags::two_d;
+            f |= ColourMapFlags::two_d;
         } else if (t == ColourMapType::Trichrome
                    || t == ColourMapType::RGB
                    || t == ColourMapType::RGBMono
                    || t == ColourMapType::RGBGrey) {
-            f = f | ColourMapFlags::three_d;
+            f |= ColourMapFlags::three_d;
         } else {
-            f = f | ColourMapFlags::one_d;
+            f |= ColourMapFlags::one_d;
         }
 
         // Linear (sequential)
@@ -315,7 +308,7 @@ namespace morph {
             || t == ColourMapType::MonovalGreen
             || t == ColourMapType::MonovalBlue ) {
 
-            f = f | ColourMapFlags::sequential;
+            f |= ColourMapFlags::sequential;
         }
 
         // Divergent
@@ -346,7 +339,7 @@ namespace morph {
             || t == ColourMapType::Roma
             || t == ColourMapType::Vanimo
             || t == ColourMapType::Managua ) {
-            f = f | ColourMapFlags::divergent;
+            f |= ColourMapFlags::divergent;
         }
 
         // Cyclic
@@ -368,14 +361,14 @@ namespace morph {
             || t == ColourMapType::CorkO
             || t == ColourMapType::VikO
             ) {
-            f = f | ColourMapFlags::cyclic;
+            f |= ColourMapFlags::cyclic;
         }
 
         // Multi-sequential
         if (t == ColourMapType::Oleron
             || t == ColourMapType::Bukavu
             || t == ColourMapType::Fes ) {
-            f = f | ColourMapFlags::multisequential;
+            f |= ColourMapFlags::multisequential;
         }
 
         // Isoluminant
@@ -384,7 +377,7 @@ namespace morph {
             || t == ColourMapType::CET_I3
             || t == ColourMapType::CET_D11
             || t == ColourMapType::CET_D12 ) {
-            f = f | ColourMapFlags::isoluminant;
+            f |= ColourMapFlags::isoluminant;
         }
 
         // Rainbow maps
@@ -404,7 +397,7 @@ namespace morph {
             || t == ColourMapType::DiscFourBlack
             || t == ColourMapType::DiscSixWhite
             || t == ColourMapType::DiscSixBlack) {
-            f = f | ColourMapFlags::rainbow;
+            f |= ColourMapFlags::rainbow;
         }
 
         // Disc maps
@@ -412,7 +405,7 @@ namespace morph {
             || t == ColourMapType::DiscFourBlack
             || t == ColourMapType::DiscSixWhite
             || t == ColourMapType::DiscSixBlack) {
-            f = f | ColourMapFlags::disc;
+            f |= ColourMapFlags::disc;
         }
 
         // PU
@@ -429,7 +422,7 @@ namespace morph {
             || t == ColourMapType::Rainbow) {
             // Not perceptually uniform
         } else {
-            f = f | ColourMapFlags::perceptually_uniform;
+            f |= ColourMapFlags::perceptually_uniform;
         }
 
         // Colourblind friendly
@@ -503,7 +496,7 @@ namespace morph {
             || t == ColourMapType::Oleron
             || t == ColourMapType::Bukavu
             || t == ColourMapType::Fes ) {
-            f = f | ColourMapFlags::colourblind_friendly;
+            f |= ColourMapFlags::colourblind_friendly;
         }
         return f;
     }
@@ -533,8 +526,8 @@ namespace morph {
     class ColourMap
     {
     public:
-        //! Flags associated with the type (generated in setType)
-        ColourMapFlags flags = ColourMapFlags::none;
+        //! Feature flags associated with the ColourMapType (generated in setType)
+        morph::flags<ColourMapFlags> flags;
     private:
         //! Type of map
         ColourMapType type = ColourMapType::Plasma;
@@ -564,6 +557,11 @@ namespace morph {
         // Set this true to reverse the direction in which the hues are output for disc maps
         bool hue_reverse_direction = false;
 
+        //! If true, as ColourMapType type is a 1D map, then expect to operate in '2D mode' with
+        //! convert (T, T). The second dimension of the input is used to set the saturation of the
+        //! colour retrieved from the map.
+        bool act_2d = false;
+
     public:
         //! Default constructor is required, but need not do anything.
         ColourMap() {}
@@ -576,318 +574,328 @@ namespace morph {
         //! type. If string doesn't match, return the default.
         static ColourMapType strToColourMapType (const std::string& s)
         {
+            // Allow use of string_view constants: "like this"sv
+#ifndef _MSC_VER
+            using std::literals::string_view_literals::operator""sv;
+#else
+            using namespace std::literals;
+#endif
             ColourMapType cmt = morph::ColourMapType::Plasma;
             std::string _s = s;
-            morph::Tools::toLowerCase (_s);
-            if (_s == "fixed") {
-                cmt = morph::ColourMapType::Fixed;
-            } else if (_s == "trichrome") {
-                cmt = morph::ColourMapType::Trichrome;
-            } else if (_s == "duochrome") {
-                cmt = morph::ColourMapType::Duochrome;
-            } else if (_s == "rgb") {
-                cmt = morph::ColourMapType::RGB;
-            } else if (_s == "rgbmono") {
-                cmt = morph::ColourMapType::RGBMono;
-            } else if (_s == "rgbgrey") {
-                cmt = morph::ColourMapType::RGBGrey;
-            } else if (_s == "hsv") {
-                cmt = morph::ColourMapType::HSV;
-            } else if (_s == "hsv1d") {
-                cmt = morph::ColourMapType::HSV1D;
-            } else if (_s == "monochromegreen") {
-                cmt = morph::ColourMapType::MonochromeGreen;
-            } else if (_s == "monochromeblue") {
-                cmt = morph::ColourMapType::MonochromeBlue;
-            } else if (_s == "monochromered") {
-                cmt = morph::ColourMapType::MonochromeRed;
-            } else if (_s == "monochrome") {
-                cmt = morph::ColourMapType::Monochrome;
-            } else if (_s == "monovalgreen") {
-                cmt = morph::ColourMapType::MonovalGreen;
-            } else if (_s == "monovalblue") {
-                cmt = morph::ColourMapType::MonovalBlue;
-            } else if (_s == "monovalred") {
-                cmt = morph::ColourMapType::MonovalRed;
-            } else if (_s == "monoval") {
-                cmt = morph::ColourMapType::Monoval;
-            } else if (_s == "greyscale") {
-                cmt = morph::ColourMapType::Greyscale;
-            } else if (_s == "greyscaleinv") {
-                cmt = morph::ColourMapType::GreyscaleInv;
-            } else if (_s == "twilight") {
-                cmt = morph::ColourMapType::Twilight;
-            } else if (_s == "petrov") {
-                cmt = morph::ColourMapType::Petrov;
+            morph::tools::toLowerCase (_s);
+            uint32_t _s_crc = morph::crc32 (_s);
+            switch (_s_crc) {
+            case morph::crc32 ("fixed"sv):
+                cmt = morph::ColourMapType::Fixed; break;
+            case morph::crc32 ("trichrome"sv):
+                cmt = morph::ColourMapType::Trichrome; break;
+            case morph::crc32 ("duochrome"sv):
+                cmt = morph::ColourMapType::Duochrome; break;
+            case morph::crc32 ("rgb"sv):
+                cmt = morph::ColourMapType::RGB; break;
+            case morph::crc32 ("rgbmono"sv):
+                cmt = morph::ColourMapType::RGBMono; break;
+            case morph::crc32 ("rgbgrey"sv):
+                cmt = morph::ColourMapType::RGBGrey; break;
+            case morph::crc32 ("hsv"sv):
+                cmt = morph::ColourMapType::HSV; break;
+            case morph::crc32 ("hsv1d"sv):
+                cmt = morph::ColourMapType::HSV1D; break;
+            case morph::crc32 ("monochromegreen"sv):
+                cmt = morph::ColourMapType::MonochromeGreen; break;
+            case morph::crc32 ("monochromeblue"sv):
+                cmt = morph::ColourMapType::MonochromeBlue; break;
+            case morph::crc32 ("monochromered"sv):
+                cmt = morph::ColourMapType::MonochromeRed; break;
+            case morph::crc32 ("monochrome"sv):
+                cmt = morph::ColourMapType::Monochrome; break;
+            case morph::crc32 ("monovalgreen"sv):
+                cmt = morph::ColourMapType::MonovalGreen; break;
+            case morph::crc32 ("monovalblue"sv):
+                cmt = morph::ColourMapType::MonovalBlue; break;
+            case morph::crc32 ("monovalred"sv):
+                cmt = morph::ColourMapType::MonovalRed; break;
+            case morph::crc32 ("monoval"sv):
+                cmt = morph::ColourMapType::Monoval; break;
+            case morph::crc32 ("greyscale"sv):
+                cmt = morph::ColourMapType::Greyscale; break;
+            case morph::crc32 ("greyscaleinv"sv):
+                cmt = morph::ColourMapType::GreyscaleInv; break;
+            case morph::crc32 ("twilight"sv):
+                cmt = morph::ColourMapType::Twilight; break;
+            case morph::crc32 ("petrov"sv):
+                cmt = morph::ColourMapType::Petrov; break;
 
             // Crameri
-            } else if (_s == "devon") {
-                cmt = morph::ColourMapType::Devon;
-            } else if (_s == "naviaw") {
-                cmt = morph::ColourMapType::NaviaW;
-            } else if (_s == "broco") {
-                cmt = morph::ColourMapType::BrocO;
-            } else if (_s == "acton") {
-                cmt = morph::ColourMapType::Acton;
-            } else if (_s == "batlow") {
-                cmt = morph::ColourMapType::Batlow;
-            } else if (_s == "berlin") {
-                cmt = morph::ColourMapType::Berlin;
-            } else if (_s == "tofino") {
-                cmt = morph::ColourMapType::Tofino;
-            } else if (_s == "broc") {
-                cmt = morph::ColourMapType::Broc;
-            } else if (_s == "corko") {
-                cmt = morph::ColourMapType::CorkO;
-            } else if (_s == "lapaz") {
-                cmt = morph::ColourMapType::Lapaz;
-            } else if (_s == "bamo") {
-                cmt = morph::ColourMapType::BamO;
-            } else if (_s == "vanimo") {
-                cmt = morph::ColourMapType::Vanimo;
-            } else if (_s == "lajolla") {
-                cmt = morph::ColourMapType::Lajolla;
-            } else if (_s == "lisbon") {
-                cmt = morph::ColourMapType::Lisbon;
-            } else if (_s == "grayc") {
-                cmt = morph::ColourMapType::GrayC;
-            } else if (_s == "roma") {
-                cmt = morph::ColourMapType::Roma;
-            } else if (_s == "vik") {
-                cmt = morph::ColourMapType::Vik;
-            } else if (_s == "navia") {
-                cmt = morph::ColourMapType::Navia;
-            } else if (_s == "bilbao") {
-                cmt = morph::ColourMapType::Bilbao;
-            } else if (_s == "turku") {
-                cmt = morph::ColourMapType::Turku;
-            } else if (_s == "lipari") {
-                cmt = morph::ColourMapType::Lipari;
-            } else if (_s == "viko") {
-                cmt = morph::ColourMapType::VikO;
-            } else if (_s == "batlowk") {
-                cmt = morph::ColourMapType::BatlowK;
-            } else if (_s == "oslo") {
-                cmt = morph::ColourMapType::Oslo;
-            } else if (_s == "oleron") {
-                cmt = morph::ColourMapType::Oleron;
-            } else if (_s == "davos") {
-                cmt = morph::ColourMapType::Davos;
-            } else if (_s == "fes") {
-                cmt = morph::ColourMapType::Fes;
-            } else if (_s == "managua") {
-                cmt = morph::ColourMapType::Managua;
-            } else if (_s == "glasgow") {
-                cmt = morph::ColourMapType::Glasgow;
-            } else if (_s == "tokyo") {
-                cmt = morph::ColourMapType::Tokyo;
-            } else if (_s == "bukavu") {
-                cmt = morph::ColourMapType::Bukavu;
-            } else if (_s == "bamako") {
-                cmt = morph::ColourMapType::Bamako;
-            } else if (_s == "batloww") {
-                cmt = morph::ColourMapType::BatlowW;
-            } else if (_s == "nuuk") {
-                cmt = morph::ColourMapType::Nuuk;
-            } else if (_s == "cork") {
-                cmt = morph::ColourMapType::Cork;
-            } else if (_s == "hawaii") {
-                cmt = morph::ColourMapType::Hawaii;
-            } else if (_s == "bam") {
-                cmt = morph::ColourMapType::Bam;
-            } else if (_s == "imola") {
-                cmt = morph::ColourMapType::Imola;
-            } else if (_s == "romao") {
-                cmt = morph::ColourMapType::RomaO;
-            } else if (_s == "buda") {
-                cmt = morph::ColourMapType::Buda;
+            case morph::crc32 ("devon"sv):
+                cmt = morph::ColourMapType::Devon; break;
+            case morph::crc32 ("naviaw"sv):
+                cmt = morph::ColourMapType::NaviaW; break;
+            case morph::crc32 ("broco"sv):
+                cmt = morph::ColourMapType::BrocO; break;
+            case morph::crc32 ("acton"sv):
+                cmt = morph::ColourMapType::Acton; break;
+            case morph::crc32 ("batlow"sv):
+                cmt = morph::ColourMapType::Batlow; break;
+            case morph::crc32 ("berlin"sv):
+                cmt = morph::ColourMapType::Berlin; break;
+            case morph::crc32 ("tofino"sv):
+                cmt = morph::ColourMapType::Tofino; break;
+            case morph::crc32 ("broc"sv):
+                cmt = morph::ColourMapType::Broc; break;
+            case morph::crc32 ("corko"sv):
+                cmt = morph::ColourMapType::CorkO; break;
+            case morph::crc32 ("lapaz"sv):
+                cmt = morph::ColourMapType::Lapaz; break;
+            case morph::crc32 ("bamo"sv):
+                cmt = morph::ColourMapType::BamO; break;
+            case morph::crc32 ("vanimo"sv):
+                cmt = morph::ColourMapType::Vanimo; break;
+            case morph::crc32 ("lajolla"sv):
+                cmt = morph::ColourMapType::Lajolla; break;
+            case morph::crc32 ("lisbon"sv):
+                cmt = morph::ColourMapType::Lisbon; break;
+            case morph::crc32 ("grayc"sv):
+                cmt = morph::ColourMapType::GrayC; break;
+            case morph::crc32 ("roma"sv):
+                cmt = morph::ColourMapType::Roma; break;
+            case morph::crc32 ("vik"sv):
+                cmt = morph::ColourMapType::Vik; break;
+            case morph::crc32 ("navia"sv):
+                cmt = morph::ColourMapType::Navia; break;
+            case morph::crc32 ("bilbao"sv):
+                cmt = morph::ColourMapType::Bilbao; break;
+            case morph::crc32 ("turku"sv):
+                cmt = morph::ColourMapType::Turku; break;
+            case morph::crc32 ("lipari"sv):
+                cmt = morph::ColourMapType::Lipari; break;
+            case morph::crc32 ("viko"sv):
+                cmt = morph::ColourMapType::VikO; break;
+            case morph::crc32 ("batlowk"sv):
+                cmt = morph::ColourMapType::BatlowK; break;
+            case morph::crc32 ("oslo"sv):
+                cmt = morph::ColourMapType::Oslo; break;
+            case morph::crc32 ("oleron"sv):
+                cmt = morph::ColourMapType::Oleron; break;
+            case morph::crc32 ("davos"sv):
+                cmt = morph::ColourMapType::Davos; break;
+            case morph::crc32 ("fes"sv):
+                cmt = morph::ColourMapType::Fes; break;
+            case morph::crc32 ("managua"sv):
+                cmt = morph::ColourMapType::Managua; break;
+            case morph::crc32 ("glasgow"sv):
+                cmt = morph::ColourMapType::Glasgow; break;
+            case morph::crc32 ("tokyo"sv):
+                cmt = morph::ColourMapType::Tokyo; break;
+            case morph::crc32 ("bukavu"sv):
+                cmt = morph::ColourMapType::Bukavu; break;
+            case morph::crc32 ("bamako"sv):
+                cmt = morph::ColourMapType::Bamako; break;
+            case morph::crc32 ("batloww"sv):
+                cmt = morph::ColourMapType::BatlowW; break;
+            case morph::crc32 ("nuuk"sv):
+                cmt = morph::ColourMapType::Nuuk; break;
+            case morph::crc32 ("cork"sv):
+                cmt = morph::ColourMapType::Cork; break;
+            case morph::crc32 ("hawaii"sv):
+                cmt = morph::ColourMapType::Hawaii; break;
+            case morph::crc32 ("bam"sv):
+                cmt = morph::ColourMapType::Bam; break;
+            case morph::crc32 ("imola"sv):
+                cmt = morph::ColourMapType::Imola; break;
+            case morph::crc32 ("romao"sv):
+                cmt = morph::ColourMapType::RomaO; break;
+            case morph::crc32 ("buda"sv):
+                cmt = morph::ColourMapType::Buda; break;
 
             // Lenthe
-            } else if (_s == "fire") {
-                cmt = morph::ColourMapType::Fire;
-            } else if (_s == "ocean") {
-                cmt = morph::ColourMapType::Ocean;
-            } else if (_s == "ice") {
-                cmt = morph::ColourMapType::Ice;
-            } else if (_s == "divbluered") {
-                cmt = morph::ColourMapType::DivBlueRed;
-            } else if (_s == "cyclicgrey") {
-                cmt = morph::ColourMapType::CyclicGrey;
-            } else if (_s == "cyclicfour") {
-                cmt = morph::ColourMapType::CyclicFour;
-            } else if (_s == "cyclicsix") {
-                cmt = morph::ColourMapType::CyclicSix;
-            } else if (_s == "cyclicdivbluered") {
-                cmt = morph::ColourMapType::CyclicDivBlueRed;
-            } else if (_s == "discfourwhite") {
-                cmt = morph::ColourMapType::DiscFourWhite;
-            } else if (_s == "discfourblack") {
-                cmt = morph::ColourMapType::DiscFourBlack;
-            } else if (_s == "discsixwhite") {
-                cmt = morph::ColourMapType::DiscSixWhite;
-            } else if (_s == "discsixblack") {
-                cmt = morph::ColourMapType::DiscSixBlack;
+            case morph::crc32 ("fire"sv):
+                cmt = morph::ColourMapType::Fire; break;
+            case morph::crc32 ("ocean"sv):
+                cmt = morph::ColourMapType::Ocean; break;
+            case morph::crc32 ("ice"sv):
+                cmt = morph::ColourMapType::Ice; break;
+            case morph::crc32 ("divbluered"sv):
+                cmt = morph::ColourMapType::DivBlueRed; break;
+            case morph::crc32 ("cyclicgrey"sv):
+                cmt = morph::ColourMapType::CyclicGrey; break;
+            case morph::crc32 ("cyclicfour"sv):
+                cmt = morph::ColourMapType::CyclicFour; break;
+            case morph::crc32 ("cyclicsix"sv):
+                cmt = morph::ColourMapType::CyclicSix; break;
+            case morph::crc32 ("cyclicdivbluered"sv):
+                cmt = morph::ColourMapType::CyclicDivBlueRed; break;
+            case morph::crc32 ("discfourwhite"sv):
+                cmt = morph::ColourMapType::DiscFourWhite; break;
+            case morph::crc32 ("discfourblack"sv):
+                cmt = morph::ColourMapType::DiscFourBlack; break;
+            case morph::crc32 ("discsixwhite"sv):
+                cmt = morph::ColourMapType::DiscSixWhite; break;
+            case morph::crc32 ("discsixblack"sv):
+                cmt = morph::ColourMapType::DiscSixBlack; break;
 
             // CET
-            } else if (_s == "cet_l02") {
-                cmt = morph::ColourMapType::CET_L02;
-            } else if (_s == "cet_l13") {
-                cmt = morph::ColourMapType::CET_L13;
-            } else if (_s == "cet_c4") {
-                cmt = morph::ColourMapType::CET_C4;
-            } else if (_s == "cet_d04") {
-                cmt = morph::ColourMapType::CET_D04;
-            } else if (_s == "cet_l12") {
-                cmt = morph::ColourMapType::CET_L12;
-            } else if (_s == "cet_c1s") {
-                cmt = morph::ColourMapType::CET_C1s;
-            } else if (_s == "cet_l01") {
-                cmt = morph::ColourMapType::CET_L01;
-            } else if (_s == "cet_c5") {
-                cmt = morph::ColourMapType::CET_C5;
-            } else if (_s == "cet_d11") {
-                cmt = morph::ColourMapType::CET_D11;
-            } else if (_s == "cet_l04") {
-                cmt = morph::ColourMapType::CET_L04;
-            } else if (_s == "cet_cbl2") {
-                cmt = morph::ColourMapType::CET_CBL2;
-            } else if (_s == "cet_c4s") {
-                cmt = morph::ColourMapType::CET_C4s;
-            } else if (_s == "cet_l15") {
-                cmt = morph::ColourMapType::CET_L15;
-            } else if (_s == "cet_l20") {
-                cmt = morph::ColourMapType::CET_L20;
-            } else if (_s == "cet_cbd1") {
-                cmt = morph::ColourMapType::CET_CBD1;
-            } else if (_s == "cet_d06") {
-                cmt = morph::ColourMapType::CET_D06;
-            } else if (_s == "cet_i3") {
-                cmt = morph::ColourMapType::CET_I3;
-            } else if (_s == "cet_d01a") {
-                cmt = morph::ColourMapType::CET_D01A;
-            } else if (_s == "cet_l16") {
-                cmt = morph::ColourMapType::CET_L16;
-            } else if (_s == "cet_l06") {
-                cmt = morph::ColourMapType::CET_L06;
-            } else if (_s == "cet_c2s") {
-                cmt = morph::ColourMapType::CET_C2s;
-            } else if (_s == "cet_i1") {
-                cmt = morph::ColourMapType::CET_I1;
-            } else if (_s == "cet_c7s") {
-                cmt = morph::ColourMapType::CET_C7s;
-            } else if (_s == "cet_i2") {
-                cmt = morph::ColourMapType::CET_I2;
-            } else if (_s == "cet_c6s") {
-                cmt = morph::ColourMapType::CET_C6s;
-            } else if (_s == "cet_c6") {
-                cmt = morph::ColourMapType::CET_C6;
-            } else if (_s == "cet_l05") {
-                cmt = morph::ColourMapType::CET_L05;
-            } else if (_s == "cet_d08") {
-                cmt = morph::ColourMapType::CET_D08;
-            } else if (_s == "cet_l03") {
-                cmt = morph::ColourMapType::CET_L03;
-            } else if (_s == "cet_l14") {
-                cmt = morph::ColourMapType::CET_L14;
-            } else if (_s == "cet_c2") {
-                cmt = morph::ColourMapType::CET_C2;
-            } else if (_s == "cet_r3") {
-                cmt = morph::ColourMapType::CET_R3;
-            } else if (_s == "cet_d01") {
-                cmt = morph::ColourMapType::CET_D01;
-            } else if (_s == "cet_c1") {
-                cmt = morph::ColourMapType::CET_C1;
-            } else if (_s == "cet_d02") {
-                cmt = morph::ColourMapType::CET_D02;
-            } else if (_s == "cet_cbc1") {
-                cmt = morph::ColourMapType::CET_CBC1;
-            } else if (_s == "cet_d09") {
-                cmt = morph::ColourMapType::CET_D09;
-            } else if (_s == "cet_l10") {
-                cmt = morph::ColourMapType::CET_L10;
-            } else if (_s == "cet_r1") {
-                cmt = morph::ColourMapType::CET_R1;
-            } else if (_s == "cet_c3") {
-                cmt = morph::ColourMapType::CET_C3;
-            } else if (_s == "cet_cbl1") {
-                cmt = morph::ColourMapType::CET_CBL1;
-            } else if (_s == "cet_c3s") {
-                cmt = morph::ColourMapType::CET_C3s;
-            } else if (_s == "cet_c5s") {
-                cmt = morph::ColourMapType::CET_C5s;
-            } else if (_s == "cet_l08") {
-                cmt = morph::ColourMapType::CET_L08;
-            } else if (_s == "cet_r4") {
-                cmt = morph::ColourMapType::CET_R4;
-            } else if (_s == "cet_r2") {
-                cmt = morph::ColourMapType::CET_R2;
-            } else if (_s == "cet_l11") {
-                cmt = morph::ColourMapType::CET_L11;
-            } else if (_s == "cet_d10") {
-                cmt = morph::ColourMapType::CET_D10;
-            } else if (_s == "cet_d07") {
-                cmt = morph::ColourMapType::CET_D07;
-            } else if (_s == "cet_l17") {
-                cmt = morph::ColourMapType::CET_L17;
-            } else if (_s == "cet_d12") {
-                cmt = morph::ColourMapType::CET_D12;
-            } else if (_s == "cet_cbc2") {
-                cmt = morph::ColourMapType::CET_CBC2;
-            } else if (_s == "cet_d13") {
-                cmt = morph::ColourMapType::CET_D13;
-            } else if (_s == "cet_d03") {
-                cmt = morph::ColourMapType::CET_D03;
-            } else if (_s == "cet_c7") {
-                cmt = morph::ColourMapType::CET_C7;
-            } else if (_s == "cet_l07") {
-                cmt = morph::ColourMapType::CET_L07;
-            } else if (_s == "cet_l09") {
-                cmt = morph::ColourMapType::CET_L09;
-            } else if (_s == "cet_l18") {
-                cmt = morph::ColourMapType::CET_L18;
-            } else if (_s == "cet_l19") {
-                cmt = morph::ColourMapType::CET_L19;
+            case morph::crc32 ("cet_l02"sv):
+                cmt = morph::ColourMapType::CET_L02; break;
+            case morph::crc32 ("cet_l13"sv):
+                cmt = morph::ColourMapType::CET_L13; break;
+            case morph::crc32 ("cet_c4"sv):
+                cmt = morph::ColourMapType::CET_C4; break;
+            case morph::crc32 ("cet_d04"sv):
+                cmt = morph::ColourMapType::CET_D04; break;
+            case morph::crc32 ("cet_l12"sv):
+                cmt = morph::ColourMapType::CET_L12; break;
+            case morph::crc32 ("cet_c1s"sv):
+                cmt = morph::ColourMapType::CET_C1s; break;
+            case morph::crc32 ("cet_l01"sv):
+                cmt = morph::ColourMapType::CET_L01; break;
+            case morph::crc32 ("cet_c5"sv):
+                cmt = morph::ColourMapType::CET_C5; break;
+            case morph::crc32 ("cet_d11"sv):
+                cmt = morph::ColourMapType::CET_D11; break;
+            case morph::crc32 ("cet_l04"sv):
+                cmt = morph::ColourMapType::CET_L04; break;
+            case morph::crc32 ("cet_cbl2"sv):
+                cmt = morph::ColourMapType::CET_CBL2; break;
+            case morph::crc32 ("cet_c4s"sv):
+                cmt = morph::ColourMapType::CET_C4s; break;
+            case morph::crc32 ("cet_l15"sv):
+                cmt = morph::ColourMapType::CET_L15; break;
+            case morph::crc32 ("cet_l20"sv):
+                cmt = morph::ColourMapType::CET_L20; break;
+            case morph::crc32 ("cet_cbd1"sv):
+                cmt = morph::ColourMapType::CET_CBD1; break;
+            case morph::crc32 ("cet_d06"sv):
+                cmt = morph::ColourMapType::CET_D06; break;
+            case morph::crc32 ("cet_i3"sv):
+                cmt = morph::ColourMapType::CET_I3; break;
+            case morph::crc32 ("cet_d01a"sv):
+                cmt = morph::ColourMapType::CET_D01A; break;
+            case morph::crc32 ("cet_l16"sv):
+                cmt = morph::ColourMapType::CET_L16; break;
+            case morph::crc32 ("cet_l06"sv):
+                cmt = morph::ColourMapType::CET_L06; break;
+            case morph::crc32 ("cet_c2s"sv):
+                cmt = morph::ColourMapType::CET_C2s; break;
+            case morph::crc32 ("cet_i1"sv):
+                cmt = morph::ColourMapType::CET_I1; break;
+            case morph::crc32 ("cet_c7s"sv):
+                cmt = morph::ColourMapType::CET_C7s; break;
+            case morph::crc32 ("cet_i2"sv):
+                cmt = morph::ColourMapType::CET_I2; break;
+            case morph::crc32 ("cet_c6s"sv):
+                cmt = morph::ColourMapType::CET_C6s; break;
+            case morph::crc32 ("cet_c6"sv):
+                cmt = morph::ColourMapType::CET_C6; break;
+            case morph::crc32 ("cet_l05"sv):
+                cmt = morph::ColourMapType::CET_L05; break;
+            case morph::crc32 ("cet_d08"sv):
+                cmt = morph::ColourMapType::CET_D08; break;
+            case morph::crc32 ("cet_l03"sv):
+                cmt = morph::ColourMapType::CET_L03; break;
+            case morph::crc32 ("cet_l14"sv):
+                cmt = morph::ColourMapType::CET_L14; break;
+            case morph::crc32 ("cet_c2"sv):
+                cmt = morph::ColourMapType::CET_C2; break;
+            case morph::crc32 ("cet_r3"sv):
+                cmt = morph::ColourMapType::CET_R3; break;
+            case morph::crc32 ("cet_d01"sv):
+                cmt = morph::ColourMapType::CET_D01; break;
+            case morph::crc32 ("cet_c1"sv):
+                cmt = morph::ColourMapType::CET_C1; break;
+            case morph::crc32 ("cet_d02"sv):
+                cmt = morph::ColourMapType::CET_D02; break;
+            case morph::crc32 ("cet_cbc1"sv):
+                cmt = morph::ColourMapType::CET_CBC1; break;
+            case morph::crc32 ("cet_d09"sv):
+                cmt = morph::ColourMapType::CET_D09; break;
+            case morph::crc32 ("cet_l10"sv):
+                cmt = morph::ColourMapType::CET_L10; break;
+            case morph::crc32 ("cet_r1"sv):
+                cmt = morph::ColourMapType::CET_R1; break;
+            case morph::crc32 ("cet_c3"sv):
+                cmt = morph::ColourMapType::CET_C3; break;
+            case morph::crc32 ("cet_cbl1"sv):
+                cmt = morph::ColourMapType::CET_CBL1; break;
+            case morph::crc32 ("cet_c3s"sv):
+                cmt = morph::ColourMapType::CET_C3s; break;
+            case morph::crc32 ("cet_c5s"sv):
+                cmt = morph::ColourMapType::CET_C5s; break;
+            case morph::crc32 ("cet_l08"sv):
+                cmt = morph::ColourMapType::CET_L08; break;
+            case morph::crc32 ("cet_r4"sv):
+                cmt = morph::ColourMapType::CET_R4; break;
+            case morph::crc32 ("cet_r2"sv):
+                cmt = morph::ColourMapType::CET_R2; break;
+            case morph::crc32 ("cet_l11"sv):
+                cmt = morph::ColourMapType::CET_L11; break;
+            case morph::crc32 ("cet_d10"sv):
+                cmt = morph::ColourMapType::CET_D10; break;
+            case morph::crc32 ("cet_d07"sv):
+                cmt = morph::ColourMapType::CET_D07; break;
+            case morph::crc32 ("cet_l17"sv):
+                cmt = morph::ColourMapType::CET_L17; break;
+            case morph::crc32 ("cet_d12"sv):
+                cmt = morph::ColourMapType::CET_D12; break;
+            case morph::crc32 ("cet_cbc2"sv):
+                cmt = morph::ColourMapType::CET_CBC2; break;
+            case morph::crc32 ("cet_d13"sv):
+                cmt = morph::ColourMapType::CET_D13; break;
+            case morph::crc32 ("cet_d03"sv):
+                cmt = morph::ColourMapType::CET_D03; break;
+            case morph::crc32 ("cet_c7"sv):
+                cmt = morph::ColourMapType::CET_C7; break;
+            case morph::crc32 ("cet_l07"sv):
+                cmt = morph::ColourMapType::CET_L07; break;
+            case morph::crc32 ("cet_l09"sv):
+                cmt = morph::ColourMapType::CET_L09; break;
+            case morph::crc32 ("cet_l18"sv):
+                cmt = morph::ColourMapType::CET_L18; break;
+            case morph::crc32 ("cet_l19"sv):
+                cmt = morph::ColourMapType::CET_L19; break;
 
-            } else if (_s == "cividis") {
-                cmt = morph::ColourMapType::Cividis;
-            } else if (_s == "viridis") {
-                cmt = morph::ColourMapType::Viridis;
-            } else if (_s == "plasma") {
-                cmt = morph::ColourMapType::Plasma;
-            } else if (_s == "inferno") {
-                cmt = morph::ColourMapType::Inferno;
-            } else if (_s == "magma") {
-                cmt = morph::ColourMapType::Magma;
-            } else if (_s == "rainbowzerowhite") {
-                cmt = morph::ColourMapType::RainbowZeroWhite;
-            } else if (_s == "rainbowzeroblack") {
-                cmt = morph::ColourMapType::RainbowZeroBlack;
-            } else if (_s == "rainbow") {
-                cmt = morph::ColourMapType::Rainbow;
-            } else if (_s == "jet") {
-                cmt = morph::ColourMapType::Jet;
+            case morph::crc32 ("cividis"sv):
+                cmt = morph::ColourMapType::Cividis; break;
+            case morph::crc32 ("viridis"sv):
+                cmt = morph::ColourMapType::Viridis; break;
+            case morph::crc32 ("plasma"sv):
+                cmt = morph::ColourMapType::Plasma; break;
+            case morph::crc32 ("inferno"sv):
+                cmt = morph::ColourMapType::Inferno; break;
+            case morph::crc32 ("magma"sv):
+                cmt = morph::ColourMapType::Magma; break;
+            case morph::crc32 ("rainbowzerowhite"sv):
+                cmt = morph::ColourMapType::RainbowZeroWhite; break;
+            case morph::crc32 ("rainbowzeroblack"sv):
+                cmt = morph::ColourMapType::RainbowZeroBlack; break;
+            case morph::crc32 ("rainbow"sv):
+                cmt = morph::ColourMapType::Rainbow; break;
+            case morph::crc32 ("jet"sv):
+                cmt = morph::ColourMapType::Jet; break;
+            default:
+                break; // cmt remains Plasma
             }
             return cmt;
         }
 
-        static std::string colourMapFlagsToStr (const ColourMapFlags _f)
+        static std::string colourMapFlagsToStr (const morph::flags<morph::ColourMapFlags>& _f)
         {
             std::string s("");
-            if (_f & ColourMapFlags::one_d) { s += (s.empty() ? "1D" : ", 1D"); }
-            if (_f & ColourMapFlags::two_d) { s += (s.empty() ? "2D" : ", 2D"); }
-            if (_f & ColourMapFlags::three_d) { s += (s.empty() ? "3D" : ", 3D"); }
+            if (_f.test (ColourMapFlags::one_d)) { s += (s.empty() ? "1D" : ", 1D"); }
+            if (_f.test (ColourMapFlags::two_d)) { s += (s.empty() ? "2D" : ", 2D"); }
+            if (_f.test (ColourMapFlags::three_d)) { s += (s.empty() ? "3D" : ", 3D"); }
 
-            if (_f & ColourMapFlags::sequential) { s += (s.empty() ? "Seq" : ", Seq"); }
-            if (_f & ColourMapFlags::multisequential) { s += (s.empty() ? "MultiSeq" : ", MultiSeq"); }
-            if (_f & ColourMapFlags::divergent) { s += (s.empty() ? "Dvg" : ", Dvg"); }
-            if (_f & ColourMapFlags::cyclic) { s += (s.empty() ? "Cyclic" : ", Cyclic"); }
-            if (_f & ColourMapFlags::disc) { s += (s.empty() ? "Disc" : ", Disc"); }
+            if (_f.test (ColourMapFlags::sequential)) { s += (s.empty() ? "Seq" : ", Seq"); }
+            if (_f.test (ColourMapFlags::multisequential)) { s += (s.empty() ? "MultiSeq" : ", MultiSeq"); }
+            if (_f.test (ColourMapFlags::divergent)) { s += (s.empty() ? "Dvg" : ", Dvg"); }
+            if (_f.test (ColourMapFlags::cyclic)) { s += (s.empty() ? "Cyclic" : ", Cyclic"); }
+            if (_f.test (ColourMapFlags::disc)) { s += (s.empty() ? "Disc" : ", Disc"); }
 
-            if (_f & ColourMapFlags::isoluminant) { s += (s.empty() ? "Iso" : ", Iso"); }
-            if (_f & ColourMapFlags::rainbow) { s += (s.empty() ? "Rain" : ", Rain"); }
+            if (_f.test (ColourMapFlags::isoluminant)) { s += (s.empty() ? "Iso" : ", Iso"); }
+            if (_f.test (ColourMapFlags::rainbow)) { s += (s.empty() ? "Rain" : ", Rain"); }
 
-            if (_f & ColourMapFlags::perceptually_uniform) { s += (s.empty() ? "PU" : ", PU"); }
-            if (_f & ColourMapFlags::colourblind_friendly) { s += (s.empty() ? "CB" : ", CB"); }
+            if (_f.test (ColourMapFlags::perceptually_uniform)) { s += (s.empty() ? "PU" : ", PU"); }
+            if (_f.test (ColourMapFlags::colourblind_friendly)) { s += (s.empty() ? "CB" : ", CB"); }
 
             return s;
         }
@@ -1658,7 +1666,7 @@ namespace morph {
         }
 
         //! How many colour datums does the colour map require?
-        static int numDatums (ColourMapType _t)
+        static int numDatums (ColourMapType _t, bool _act_2d = false)
         {
             int n = 0;
             switch (_t) {
@@ -1680,16 +1688,16 @@ namespace morph {
                 n = 2;
                 break;
             }
-            default: // rest are one datum
+            default: // rest are one datum (unless act_2d is set)
             {
-                n = 1;
+                n = _act_2d ? 2 : 1;
                 break;
             }
             }
 
             return n;
         }
-        int numDatums() const { return ColourMap::numDatums (this->type); }
+        int numDatums() const { return ColourMap::numDatums (this->type, this->act_2d); }
 
         //! The maximum number for the range of the datum to convert to a colour. 1 for
         //! floating point variables.
@@ -1737,7 +1745,11 @@ namespace morph {
             std::array<float, 3> c = {0.0f, 0.0f, 0.0f};
             if (this->type == ColourMapType::Duochrome) {
                 c = this->duochrome (_datum1, _datum2);
-            } else {
+            } else if (this->type == ColourMapType::HSV
+                || this->type == ColourMapType::DiscFourWhite
+                || this->type == ColourMapType::DiscFourBlack
+                || this->type == ColourMapType::DiscSixWhite
+                || this->type == ColourMapType::DiscSixBlack) {
                 // Convert two inputs to radius and angle
                 std::array<T, 2> ra = xy_to_radius_angle (_datum1, _datum2);
                 float ra0 = static_cast<float>(ra[0]); // radius
@@ -1755,8 +1767,13 @@ namespace morph {
                 } else if (this->type == ColourMapType::DiscSixBlack) {
                     lenthe::colormap::disk::six<float> (ra0, ra1, c.data(), false, lenthe::colormap::Sym::None);
                 } else {
-                    throw std::runtime_error ("Set ColourMapType to Duochrome, HSV DiscFourWhite/Black or DiscSixWhite/Black.");
+                    throw std::runtime_error ("ColourMap::convert(T, T): Unexpected case");
                 }
+            } else if (this->act_2d == true) {
+                // Returning a 1D colourmap value using the second dim as saturation
+                c = this->convertWithSaturation (_datum1, _datum2);
+            } else {
+                    throw std::runtime_error ("Set ColourMapType to Duochrome, HSV DiscFourWhite/Black or DiscSixWhite/Black or a 1D map with act_2d=true.");
             }
             return c;
         }
@@ -1828,6 +1845,16 @@ namespace morph {
             }
             }
             return clr;
+        }
+
+        //! A 2D convert() which adjusts the saturation of the retrieved colour using the second dimension.
+        std::array<float, 3> convertWithSaturation (const T _datum, const T _saturation) const
+        {
+            std::array<float, 3> c = this->convert (_datum);
+            std::array<float, 3> hsv = ColourMap<T>::rgb2hsv (c);
+            float saturation = _saturation > T{1} ? 1.0f : static_cast<float>(_saturation);
+            hsv[1] *= saturation < 0.0f ? 0.0f : saturation;
+            return ColourMap<T>::hsv2rgb (hsv);
         }
 
         //! Convert the scalar datum into an RGB (or BGR) colour
@@ -2915,6 +2942,8 @@ namespace morph {
             }
             this->hue_reverse_direction = rev;
         }
+
+        void set_act_2d (const bool _2d) { this->act_2d = _2d; }
 
         /*!
          * @param datum gray value from 0.0 to 1.0

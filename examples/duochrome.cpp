@@ -4,7 +4,7 @@
 #include <morph/Visual.h>
 #include <morph/ColourMap.h>
 #include <morph/ScatterVisual.h>
-#include <morph/Scale.h>
+#include <morph/scale.h>
 #include <morph/vec.h>
 #include <iostream>
 #include <fstream>
@@ -15,16 +15,14 @@ int main()
 {
     int rtn = -1;
 
-    morph::Visual v(1024, 768, "ScatterVisual with duochrome colourmap", {0,0}, {1,1,1}, 1.0f, 0.05f);
+    morph::Visual v(1024, 768, "ScatterVisual with duochrome colourmap");
     v.zNear = 0.001;
-    v.showCoordArrows = false;
-    v.lightingEffects();
 
     static constexpr int slen = 20;
     static constexpr int half_slen = slen/2;
     try {
         morph::vec<float, 3> offset = { 0.0, 0.0, 0.0 };
-        morph::Scale<float> scale;
+        morph::scale<float> scale;
         scale.setParams (1.0, 0.0);
 
         std::vector<morph::vec<float, 3>> points(slen*slen);
@@ -51,9 +49,14 @@ int main()
         sv->setVectorData (&points);
         sv->radiusFixed = 0.035f;
         sv->colourScale = scale;
+#if 1
         sv->cm.setType (morph::ColourMapType::Duochrome);
         sv->cm.setHueGB();
-        //sv->cm.setHue(0.515f);
+#else
+        // You can alternatively use a 1D colour map like Plasma with the map set to "act 2D"
+        sv->cm.setType (morph::ColourMapType::Plasma);
+        sv->cm.set_act_2d (true);
+#endif
         sv->finalize();
         v.addVisualModel (sv);
 

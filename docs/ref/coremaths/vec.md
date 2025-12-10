@@ -24,7 +24,8 @@ Header file: [morph/vec.h](https://github.com/ABRG-Models/morphologica/blob/main
 from `std::array` and can be used in much the same way as its STL
 parent. It has iterators and you can apply STL algorithms. It is
 constexpr-capable, meaning that it can be incorporated into constexpr
-functions to do compile-time maths.
+functions to do compile-time maths. The majority of its methods are
+`nopexcept` (they do *not* throw exceptions).
 
 ```c++
 namespace morph {
@@ -175,16 +176,104 @@ std::map<morph::vec<int, 2>, std::string, decltype(_cmp)> themap(_cmp);
 ```
 This example comes from [tests/testvec_asmapkey](https://github.com/ABRG-Models/morphologica/blob/main/tests/testvec_asmapkey.cpp).
 
+## Casting of `std::array` to `morph::vec`
+
+If you have data in a part of your program contained in an `std::array`, it's possible to cast it to `morph::vec` either to use it within a morphologica visualization or simply to do some maths on the data.
+
+The following casts from `array` to `vec` are possible.
+
+### Cast `array` to a const pointer
+
+Use `static_cast` or `reinterpret_cast` to cast an `array` to a `const vec` pointer.
+```c++
+// An array to cast
+std::array<float, 3> a1 = { 3, 2, 1 };
+// A function taking a const pointer argument
+void f_const_ptr_v (const morph::vec<float, 3>* v1) { /* morph::vec operations */ }
+// Calls to the function, passing in the array
+f_const_ptr_v (static_cast< const morph::vec<float, 3>* >(&a1));
+f_const_ptr_v (reinterpret_cast< const morph::vec<float, 3>* >(&a1));
+f_const_ptr_v (static_cast< morph::vec<float, 3>* >(&a1));
+f_const_ptr_v (reinterpret_cast< morph::vec<float, 3>* >(&a1));
+```
+
+### Cast `array` to a non-const pointer
+
+You can only use `static_cast` to cast an `array` to a non-const pointer.
+```c++
+void f_nonconst_ptr_v (morph::vec<float, 3>* v1) { /* morph::vec operations */ }
+f_nonconst_ptr_v (static_cast< morph::vec<float, 3>* >(&a1));
+```
+
+### Cast `array` to a const reference
+
+You can use `static_cast` or `reinterpret_cast` to cast `std::array` to a `const vec<>&`.
+```c++
+void f_const_ref_v (const morph::vec<float, 3>& v1) { /* morph::vec operations */ }
+f_const_ref_v (static_cast< const morph::vec<float, 3>& >(a1));
+f_const_ref_v (reinterpret_cast< const morph::vec<float, 3>& >(a1));
+f_const_ref_v (static_cast< morph::vec<float, 3>& >(a1));
+f_const_ref_v (reinterpret_cast< morph::vec<float, 3>& >(a1));
+```
+
+### Cast `array` to a non-const reference
+
+You can only use `static_cast` to cast `array` to a non-const `vec` reference.
+```c++
+void f_nonconst_ref_v (morph::vec<float, 3>& v1) { /* morph::vec operations */ }
+f_nonconst_ref_v (static_cast< morph::vec<float, 3>& >(a1));
+```
+
+## Casting `morph::vec` to `std::array`
+
+You may need to use a third-party library to process data in a `morph::vec`. You can use these casts to avoid any need to duplicate the data.
+
+### Cast to a const `array` pointer
+You can use static, reinterpret or dynamic casts to cast from `morph::vec` to `std::array`. Declaring that the pointer must be const is optional.
+```c++
+morph::vec<float, 3> v1 = { 1, 2, 3 };
+void f_const_ptr_a (const std::array<float, 3>* a1) { /* std::array operations */ }
+f_const_ptr_a (static_cast<std::array<float, 3>*>(&v1));
+f_const_ptr_a (reinterpret_cast<std::array<float, 3>*>(&v1));
+f_const_ptr_a (dynamic_cast<std::array<float, 3>*>(&v1));
+f_const_ptr_a (static_cast<const std::array<float, 3>*>(&v1));
+f_const_ptr_a (reinterpret_cast<const std::array<float, 3>*>(&v1));
+f_const_ptr_a (dynamic_cast<const std::array<float, 3>*>(&v1));
+```
+### Cast to a non-const `array` pointer
+You can static cast or reinterpret_cast to cast `vec` to a non-const `array` pointer
+```c++
+void f_nonconst_ptr_a (std::array<float, 3>* a1) { /* std::array operations */ }
+f_nonconst_ptr_a (static_cast<std::array<float, 3>*>(&v1));
+f_nonconst_ptr_a (reinterpret_cast<std::array<float, 3>*>(&v1));
+```
+### Cast to a const `array` reference
+Two possibilities for `static_cast` and one for `reinterpret_cast`.
+```c++
+void f_const_ref_a (const std::array<float, 3>& a1) { /* std::array operations */ }
+f_const_ref_a (static_cast< std::array<float, 3> >(v1));
+f_const_ref_a (static_cast< std::array<float, 3>& >(v1));
+f_const_ref_a (dynamic_cast< std::array<float, 3>& >(v1));
+```
+
+### Cast to a non-const `array` reference
+You can either static_cast or dynamic_cast from `vec` to `array` by reference.
+```c++
+void f_nonconst_ref_a (std::array<float, 3>& a1) { /* std::array operations */ }
+f_nonconst_ref_a (static_cast< std::array<float, 3>& >(v1));
+f_nonconst_ref_a (dynamic_cast< std::array<float, 3>& >(v1));
+```
+
 ## Member functions
 
 ### Setter functions
 ```c++
-template <typename _S=S> // S and N from morph::vec class template
-void set_from (const std::vector<_S>& vec);
-void set_from (const std::array<_S, N>& ar);
-void set_from (const std::array<_S, (N+1)>& ar);
-void set_from (const std::array<_S, (N-1)>& ar);
-void set_from (const vec<_S, (N-1)>& v);
+template <typename Sy=S> // S and N from morph::vec class template
+void set_from (const std::vector<Sy>& vec);
+void set_from (const std::array<Sy, N>& ar);
+void set_from (const std::array<Sy, (N+1)>& ar);
+void set_from (const std::array<Sy, (N-1)>& ar);
+void set_from (const vec<Sy, (N-1)>& v);
 ```
 
 These `set_from` functions set the values of this `morph::vec` from
@@ -194,7 +283,7 @@ vectors are converted to 4D before being multiplied by 4x4 transform
 matrices.
 
 ```c++
-void set_from (const _S& v);
+void set_from (const Sy& v);
 void zero();
 void set_max();
 void set_lowest();
@@ -204,8 +293,8 @@ This `set_from` overload fills all elements of the `morph::vec` with `v`. `zero(
 ### Numpy clones
 
 ```c++
-void linspace (const _S start, const _S2 stop);
-void arange (const _S start, const _S2 stop, const _S2 increment);
+void linspace (const Sy start, const Sy2 stop);
+void arange (const Sy start, const Sy2 stop, const Sy2 increment);
 ```
 
 Python Numpy-like functions to fill the `morph::vec` with sequences of
@@ -247,6 +336,23 @@ morph::vec<int, 3> vi = {1,2,3};
 morph::vec<float, 3> vf = vi.as_float(); // Note: new memory is used for the new object
 ```
 
+### Get first and last elements in the vec
+
+Get first (0th) and last (N-1 th) elements in the vec. If vec is of zero size, returns a 2 element vec containing zeros.
+```c++
+morph::vec<int, 3> vi3 = { 1, 2, 3 };
+morph::vec<int, 2> fl3 = vi3.firstlast();
+std::cout << fl3; // (1, 3)
+
+morph::vec<int, 2> vi2 = { 1, 2 };
+morph::vec<int, 2> fl2 = vi2.firstlast();
+std::cout << fl2; // (1, 2)
+
+morph::vec<int, 1> vi1 = { 2 };
+morph::vec<int, 2> fl1 = vi1.firstlast();
+std::cout << fl1; // (2, 2)
+```
+
 ### String output
 
 ```c++
@@ -264,10 +370,10 @@ gives output `(1,2,3)`.
 ### Length, lengthen, shorten
 
 ```c++
-template <typename _S=S>
-_S length() const;                     // return the vector length
-_S length_sq() const;                  // return the vector length squared
-_S sos() const;                        // also length squared. See header for difference
+template <typename Sy=S>
+Sy length() const;                     // return the vector length
+Sy length_sq() const;                  // return the vector length squared
+Sy sos() const;                        // also length squared. See header for difference
 // Enabled only for non-integral S:
 vec<S, N> shorten (const S dl) const;  // return a vector shortened by length dl
 vec<S, N> lengthen (const S dl) const; // return a vector lengthened by length dl
@@ -303,7 +409,7 @@ the range [-1,1].
 
 Note that these functions use a template to ensure they are only enabled for non-integral types:
 ```c++
-template <typename _S=S, std::enable_if_t<!std::is_integral<std::decay_t<_S>>::value, int> = 0 >
+template <typename Sy=S, std::enable_if_t<!std::is_integral<std::decay_t<Sy>>::value, int> = 0 >
 ```
 
 Check whether your renormalized vector is a unit vector:
@@ -349,14 +455,14 @@ void replace_nan_or_inf_with (const S replacement)
 ### Simple statistics
 
 ```c++
-// These template functions are declared with a type _S:
-template<typename _S=S>
+// These template functions are declared with a type Sy:
+template<typename Sy=S>
 
-_S mean() const;          // The arithmetic mean
-_S variance() const;      // The variance
-_S std() const;           // The standard deviation
-_S sum() const;           // The sum of all elements
-_S product() const;       // The product of the elements
+Sy mean() const;          // The arithmetic mean
+Sy variance() const;      // The variance
+Sy std() const;           // The standard deviation
+Sy sum() const;           // The sum of all elements
+Sy product() const;       // The product of the elements
 ```
 
 ### Maths functions
@@ -365,10 +471,10 @@ Raising elements to a **power**.
 ```c++
 vec<S, N> pow (const S& p) const;          // raise all elements to the power p, returning result in new vec
 void pow_inplace (const S& p);             // in-place version which operates on the existing data in *this
-template<typename _S=S>
-vec<S, N> pow (const vec<_S, N>& p) const; // Raise each element in *this to the power of the matching element in p
-template<typename _S=S>
-void pow_inplace (const vec<_S, N>& p);    // in-place version
+template<typename Sy=S>
+vec<S, N> pow (const vec<Sy, N>& p) const; // Raise each element in *this to the power of the matching element in p
+template<typename Sy=S>
+void pow_inplace (const vec<Sy, N>& p);    // in-place version
 ```
 
 The **signum function** is 1 if a value is >0; -1 if the value is <0 and 0 if the value is 0.
@@ -419,23 +525,23 @@ void abs_inplace();
 
 The **scalar product** (also known as inner product or dot product) can be computed for two `vec` instances:
 ```c++
-template<typename _S=S>
-S dot (const vec<_S, N>& v) const
+template<typename Sy=S>
+S dot (const vec<Sy, N>& v) const
 ```
 
 The **cross product** is defined here only for `N`=2 or `N`=3.
 
 If `N` is 2, then v x w is defined to be v_x w_y - v_y w_x and for N=3, see your nearest vector maths textbook. The function signatures are
 ```c++
-template <typename _S=S, size_t _N = N, std::enable_if_t<(_N==2), int> = 0>
-S cross (const vec<_S, _N>& w) const;
-template <typename _S=S, size_t _N = N, std::enable_if_t<(_N==3), int> = 0>
-vec<S, _N> cross (const vec<_S, _N>& v) const;
+template <typename Sy=S, size_t _N = N, std::enable_if_t<(_N==2), int> = 0>
+S cross (const vec<Sy, _N>& w) const;
+template <typename Sy=S, size_t _N = N, std::enable_if_t<(_N==3), int> = 0>
+vec<S, _N> cross (const vec<Sy, _N>& v) const;
 ```
 
 Also defined only in two dimensions are **angle** functions. `angle()` returns the angle of the `vec`. It wraps `std::atan2(y, x)`. `set_angle()` sets the angle of a 2D `vec`, maintaining its length or setting it to 1 if it is a zero vector.
 
 ```c++
 S angle() const;                  // Returns the angle of the 2D vec in radians
-void set_angle (const _S _ang);   // Set a two dimensional angle in radians
+void set_angle (const Sy _ang);   // Set a two dimensional angle in radians
 ```

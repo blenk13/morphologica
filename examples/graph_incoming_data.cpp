@@ -4,7 +4,6 @@
 #include <morph/Visual.h>
 #include <morph/ColourMap.h>
 #include <morph/GraphVisual.h>
-#include <morph/Scale.h>
 #include <morph/vvec.h>
 #include <iostream>
 #include <fstream>
@@ -15,7 +14,7 @@ int main()
 {
     int rtn = -1;
 
-    morph::Visual v(1024, 768, "Graph", {-0.8,-0.8}, {.1,.1,.1}, 2.0f, 0.01f);
+    morph::Visual v(1024, 768, "Graph");
     v.zNear = 0.001;
     v.showCoordArrows = true;
     v.backgroundWhite();

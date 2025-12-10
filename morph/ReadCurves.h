@@ -8,16 +8,11 @@
  */
 #pragma once
 
-#include <morph/MorphDbg.h>
 #include <string>
 #include <list>
 #include <vector>
 #include <map>
-#ifdef __WIN__
-# include <rapidxml-1.13/rapidxml.hpp>
-#else
-# include <morph/rapidxml.hpp>
-#endif
+#include <rapidxml/rapidxml.hpp>
 #include <morph/BezCurvePath.h>
 #include <morph/AllocAndRead.h>
 #include <morph/tools.h>
@@ -336,7 +331,7 @@ namespace morph
                 throw std::runtime_error ("Found a <path> element without a d attribute");
             }
 
-            DBG ("Path commands for layer " << layerName << ": " << d);
+            // std::cout << "Path commands for layer " << layerName << ": " << d << std::endl;
 
             morph::BezCurvePath<float> curves = this->parseD (d);
             curves.name = layerName;
@@ -366,9 +361,9 @@ namespace morph
                 // Extract the length of the line in mm from the layer name
                 // _x33_mm means .33 mm
                 std::string mm(g_id);
-                morph::Tools::searchReplace ("x", ".", mm);
-                morph::Tools::searchReplace ("_", "", mm);
-                morph::Tools::searchReplace ("m", "", mm);
+                morph::tools::searchReplace ("x", ".", mm);
+                morph::tools::searchReplace ("_", "", mm);
+                morph::tools::searchReplace ("m", "", mm);
                 float mmf = std::atof (mm.c_str());
                 // dl is the length of the scale bar line
                 float dl = 0.0f;
@@ -404,7 +399,7 @@ namespace morph
                     std::stringstream ss;
                     ss << s.substr(p0, p1-p0);
                     std::string ccs = ss.str();
-                    if (morph::Tools::containsOnlyWhitespace (ccs)) {
+                    if (morph::tools::containsOnlyWhitespace (ccs)) {
                         // Do nothing
                     } else {
                         ss >> n;
@@ -516,7 +511,7 @@ namespace morph
                 {
                     p2 = d.find_first_of (svgCmds, p1+1);
                     std::string lCmd = d.substr (p1+1, p2-p1-1);
-                    if (morph::Tools::containsOnlyWhitespace (lCmd)) {
+                    if (morph::tools::containsOnlyWhitespace (lCmd)) {
                         p3 = lCmd.size()-1;
                     } else {
                         std::vector<float> v = this->splitSvgCmdString (lCmd, cmd, 10000, p3);
@@ -542,7 +537,7 @@ namespace morph
                 {
                     p2 = d.find_first_of (svgCmds, p1+1);
                     std::string lCmd = d.substr (p1+1, p2-p1-1);
-                    if (morph::Tools::containsOnlyWhitespace (lCmd)) {
+                    if (morph::tools::containsOnlyWhitespace (lCmd)) {
                         p3 = lCmd.size()-1;
                     } else {
                         std::vector<float> v = this->splitSvgCmdString (lCmd, cmd, 10000, p3);
@@ -568,7 +563,7 @@ namespace morph
                 {
                     p2 = d.find_first_of (svgCmds, p1+1);
                     std::string lCmd = d.substr (p1+1, p2-p1-1);
-                    if (morph::Tools::containsOnlyWhitespace (lCmd)) {
+                    if (morph::tools::containsOnlyWhitespace (lCmd)) {
                         p3 = lCmd.size()-1;
                     } else {
                         std::vector<float> v = this->splitSvgCmdString (lCmd, cmd, 10000, p3);
@@ -599,7 +594,7 @@ namespace morph
                 {
                     p2 = d.find_first_of (svgCmds, p1+1);
                     std::string mCmd = d.substr (p1+1, p2-p1-1);
-                    if (morph::Tools::containsOnlyWhitespace (mCmd)) {
+                    if (morph::tools::containsOnlyWhitespace (mCmd)) {
                         p3 = mCmd.size()-1;
                     } else {
                         std::vector<float> v = this->splitSvgCmdString (mCmd, cmd, 10000, p3);
@@ -639,7 +634,7 @@ namespace morph
                 {
                     p2 = d.find_first_of (svgCmds, p1+1);
                     std::string cCmd = d.substr (p1+1, p2-p1-1); // cCmd may be either a single command (6 params) or a great long line.
-                    if (morph::Tools::containsOnlyWhitespace (cCmd)) {
+                    if (morph::tools::containsOnlyWhitespace (cCmd)) {
                         p3 = cCmd.size()-1;
                     } else {
                         std::vector<float> v = this->splitSvgCmdString (cCmd, cmd, 6, p3);
@@ -669,7 +664,7 @@ namespace morph
                 {
                     p2 = d.find_first_of (svgCmds, p1+1);
                     std::string sCmd = d.substr (p1+1, p2-p1-1);
-                    if (morph::Tools::containsOnlyWhitespace (sCmd)) {
+                    if (morph::tools::containsOnlyWhitespace (sCmd)) {
                         p3 = sCmd.size()-1;
                     } else {
                         std::vector<float> v = this->splitSvgCmdString (sCmd, cmd, 4, p3);

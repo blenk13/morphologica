@@ -5,9 +5,6 @@
 //
 
 #include <iostream>
-#define DBGSTREAM std::cout
-#define DEBUG 1
-#include <morph/MorphDbg.h>
 
 #include <morph/HexGrid.h>
 #include <morph/ReadCurves.h>
@@ -81,16 +78,10 @@ int main()
 
         // There should be precise number of vertices
         unsigned int reqd = 31;
-        if (vertices.size() != reqd) {
-            DBG ("Not correct number of vertices; " << vertices.size() << " instead of " << reqd);
-            rtn -= 1;
-        }
+        if (vertices.size() != reqd) { rtn -= 1; }
 
         // Expecting one domain
-        if (domains.size() != 3) {
-            DBG ("Not correct number of domains!");
-            rtn -= 1;
-        }
+        if (domains.size() != 3) { rtn -= 1; }
 
         morph::Visual v(1600, 1000, "Dirichlet code");
         v.lightingEffects();
@@ -172,7 +163,7 @@ int main()
 
     } catch (const exception& e) {
         cerr << "Caught exception: " << e.what() << endl;
-        cerr << "Current working directory: " << Tools::getPwd() << endl;
+        cerr << "Current working directory: " << tools::getPwd() << endl;
         rtn = -1;
     }
     return rtn;

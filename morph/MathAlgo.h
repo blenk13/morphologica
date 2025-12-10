@@ -146,7 +146,7 @@ namespace morph {
                    typename T,
                    typename Allocator=std::allocator<T> >
         static morph::vec<T, 2> linregr (const Container<T, Allocator>& x,
-                                       const Container<T, Allocator>& y)
+                                         const Container<T, Allocator>& y)
         {
             morph::vec<T, 2> ms_x = MathAlgo::meansos<Container, T, Allocator> (x);
             morph::vec<T, 2> ms_y = MathAlgo::meansos<Container, T, Allocator> (y);
@@ -282,7 +282,7 @@ namespace morph {
         /*!
          * Find the coordinate of the crossing point of the two line segments p1-q1 and p2-q2,
          * *assuming* the segments intersect. Call this *after* you have used
-         * MathAlgo::segments_intesect!
+         * MathAlgo::segments_intersect!
          *
          * \param p1 Start of line segment 1
          * \param q1 End of line segment 1

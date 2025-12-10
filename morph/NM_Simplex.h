@@ -10,15 +10,16 @@
  */
 #pragma once
 
+#include <cstdint>
 #include <vector>
-#include <iostream>
+#include <functional>
 #include <morph/MathAlgo.h>
 #include <morph/vvec.h>
 
 namespace morph {
 
     //! What state is an instance of the NM_Simplex class in?
-    enum class NM_Simplex_State
+    enum class NM_Simplex_State : uint32_t
     {
         // The state is unknown
         Unknown,
@@ -36,6 +37,14 @@ namespace morph {
         ReadyToStop
     };
 
+    //! For what reason did we enter NM_Simplex_State?
+    enum class NM_Simplex_Stop_Reason : uint32_t
+    {
+        None,                 // There is currently no reason to stop
+        TerminationThreshold, // Normal reason for stopping, we got to the termination_threashd
+        TooManyOperations     // We exceeded too_many_operations
+    };
+
     /*!
      * A class implementing a Nelder Mead simplex of points, and the associated methods for
      * manipulating those points on the way to discovering a minimum of a function.
@@ -51,16 +60,16 @@ namespace morph {
         // Parameters. Initialised to the standard values given on the NM Wikipedia page.
         //
         //! The reflection coefficient
-        T alpha = 1.0;
+        T alpha = T{1};
         //! The expansion coefficient
-        T gamma = 2.0;
+        T gamma = T{2};
         //! The contraction coefficient
-        T rho = 0.5;
+        T rho = T{0.5};
         //! The shrink coefficient
-        T sigma = 0.5;
+        T sigma = T{0.5};
 
         //! The number of dimensions in the search. There are n+1 vertices in the simplex.
-        unsigned int n = 2;
+        unsigned int n = 2U;
 
         //! Do we *descend* to the *minimum* metric value/fitness/objective function value? By
         //! default we DO. Set this to false to instead ascend to the maximum metric value.
@@ -68,17 +77,17 @@ namespace morph {
 
         //! Increment every time the algorithm performs an operation of some sort. For
         //! this NM algorithm, I increment every time the simplex changes shape.
-        unsigned long long int operation_count = 0;
+        unsigned long long int operation_count = 0ULL;
 
         //! If set >0, then if operation_count exceeds too_many_operations, then
         //! ReadyToStop is set (and a warning emitted). Arriving at
         //! too_many_operations probably means termination_threshold was set too low.
-        unsigned long long int too_many_operations = 0;
+        unsigned long long int too_many_operations = 0ULL;
 
         //! Client code should set the termination threshold to be suitable for the problem. When
         //! the standard deviation of the values of the objective function at the vertices of the
         //! simplex drop below this value, the algorithm will be deemed to be finished.
-        T termination_threshold = 0.0001;
+        T termination_threshold = T{0.0001};
 
         //! The centroid of all points except vertex n (the last one)
         morph::vvec<T> x0;
@@ -114,6 +123,9 @@ namespace morph {
         //! compute a new objective function value for the reflected point xr;
         NM_Simplex_State state = NM_Simplex_State::Unknown;
 
+        //! Store the reason the algorithm entered the state NM_Simple_State::ReadyToStop
+        NM_Simplex_Stop_Reason stopreason = NM_Simplex_Stop_Reason::None;
+
     public:
         // Constructors
 
@@ -129,7 +141,7 @@ namespace morph {
             // if (initial_vertices.size() < 2) { /* Error! */ }
             this->n = initial_vertices.size() - 1;
             this->allocate();
-            unsigned int i = 0;
+            unsigned int i = 0U;
             for (morph::vvec<T>& v : this->vertices) {
                 v = initial_vertices[i++];
             }
@@ -161,6 +173,62 @@ namespace morph {
         //! General constructor for n dimensional simplex
         NM_Simplex (const unsigned int _n): n(_n) { this->allocate(); }
 
+        //! Reset the algorithm ready to go again
+        void reset (const morph::vvec<morph::vvec<T>>& initial_vertices)
+        {
+            this->stopreason = NM_Simplex_Stop_Reason::None;
+            this->operation_count = 0ULL;
+            this->n = initial_vertices.size() - 1;
+            this->allocate();
+            unsigned int i = 0U;
+            for (morph::vvec<T>& v : this->vertices) { v = initial_vertices[i++]; }
+            this->state = NM_Simplex_State::NeedToComputeThenOrder;
+        }
+
+        /*!
+         * The objective function.
+         *
+         * Set this objective function in your client code with something like:
+         *
+         * auto myobj = [](const morph::vvec<T>& point) { return T{your_implementation_result}; };
+         * simp.objective = myobj;
+         */
+        std::function<T(const morph::vvec<T>& point)> objective = {};
+
+        /*!
+         * Perform one step of the process
+         */
+        void step()
+        {
+            if (this->state == NM_Simplex_State::NeedToComputeThenOrder) {
+                for (unsigned int i = 0; i <= this->n; ++i) {
+                    this->values[i] = this->objective (this->vertices[i]);
+                }
+                this->order();
+            } else if (this->state == NM_Simplex_State::NeedToOrder) {
+                this->order();
+            } else if (this->state == NM_Simplex_State::NeedToComputeReflection) {
+                T val = this->objective (this->xr);
+                this->apply_reflection (val);
+            } else if (this->state == NM_Simplex_State::NeedToComputeExpansion) {
+                T val = this->objective (this->xe);
+                this->apply_expansion (val);
+            } else if (this->state == NM_Simplex_State::NeedToComputeContraction) {
+                T val = this->objective (this->xc);
+                this->apply_contraction (val);
+            }
+        }
+
+        /*!
+         * Run the optimization. If it returns false, you didn't set the objective function
+         */
+        bool run()
+        {
+            if (!this->objective) { return false; } // user did not set an objective function
+            while (this->state != NM_Simplex_State::ReadyToStop) { this->step(); }
+            return true;
+        }
+
         //! Return the location of the best approximation, given the values of the vertices.
         morph::vvec<T> best_vertex() { return this->vertices[this->vertex_order[0]]; }
         //! Return the value of the best approximation, given the values of the vertices.
@@ -182,15 +250,14 @@ namespace morph {
             T sd = MathAlgo::compute_sd<T> (this->values);
             if (sd < this->termination_threshold) {
                 this->state = NM_Simplex_State::ReadyToStop;
+                this->stopreason = NM_Simplex_Stop_Reason::TerminationThreshold;
                 return;
-            } else if (this->too_many_operations > 0
+            } else if (this->too_many_operations > 0ULL
                        && this->operation_count > this->too_many_operations) {
-                // If this is emitted, check your termination_threshold
-                std::cerr << "Warning (NM_Simplex): Reached too_many_operations. "
-                          << "Setting state 'ReadyToStop'. Check termination_threshold, which was: "
-                          << this->termination_threshold << ". SD of simplex vertices was "
-                          << sd <<" (i.e. >=termination_threshold)." << std::endl;
+                // Reached too_many_operations. Setting state 'ReadyToStop'. Check
+                // termination_threshold and the standard deviation of the final vertices.
                 this->state = NM_Simplex_State::ReadyToStop;
+                this->stopreason = NM_Simplex_Stop_Reason::TooManyOperations;
                 return;
             }
 
@@ -332,13 +399,13 @@ namespace morph {
         void allocate()
         {
             this->vertices.resize (this->n+1);
-            for (morph::vvec<T>& v : this->vertices) { v.resize (this->n, 0.0); }
-            this->x0.resize (this->n, 0.0);
-            this->xr.resize (this->n, 0.0);
-            this->xe.resize (this->n, 0.0);
-            this->xc.resize (this->n, 0.0);
-            this->values.resize (this->n+1, 0.0);
-            this->vertex_order.resize (this->n+1, 0);
+            for (morph::vvec<T>& v : this->vertices) { v.resize (this->n, T{0}); }
+            this->x0.resize (this->n, T{0});
+            this->xr.resize (this->n, T{0});
+            this->xe.resize (this->n, T{0});
+            this->xc.resize (this->n, T{0});
+            this->values.resize (this->n+1, T{0});
+            this->vertex_order.resize (this->n+1, 0U);
             unsigned int i = 0;
             for (unsigned int& vo : this->vertex_order) { vo = i++; }
         }

@@ -62,6 +62,55 @@ vectors on which mathematical operations can be called.
 
 `vvec` is very similar to `vec`, sharing many member functions with the same name.
 
+Some methods may throw exceptions, those that do not are marked `noexcept`.
+
+## Access
+
+As an `std::vector`-like object, your `vvec` is indexed just like your `vector`. Use any of the array access `operator[]`, the `at()` method, or STL iterators.
+
+```c++
+morph::vvec<int> vvf = { 1, 2, 3 };
+std::cout << "First element of array: " << vvf[0] << std::endl;
+try {
+  std::cout << "First element of array: " << vvf.at(0) << std::endl;
+} catch const (const std::out_of_range& e) { /* Uh oh */ }
+morph::vvec<int>::iterator vvf_iter = vvf.begin();
+std::cout << "First element of array: " << *vvf_iter << std::endl;
+```
+
+### Signed indices
+
+`vvec` does introduce one new way to index its content.
+This is the ability to use a signed index with the methods `at_signed()` and `c_at_signed()`.
+This allows you to access elements at the end or your `vvec` with this code:
+
+```c++
+morph::vvec<int> vvf = { 1, 2, 3 };
+try {
+  std::cout << "This will output '3'" << vvf.at_signed (-1) << std::endl;
+  std::cout << "This will output '2'" << vvf.at_signed (-2) << std::endl;
+  std::cout << "This will output '1'" << vvf.at_signed (-3) << std::endl;
+  std::cout << "This will cause an exception: " << vvf.at_signed (-4) << std::endl;
+} catch const (const std::out_of_range& e) { /* Too negative (or too positive) */ }
+```
+
+Non-negative indices work as if you called `.at(index)`:
+```c++
+try {
+  std::cout << "This will output '1'" << vvf.at_signed (0) << std::endl;
+  std::cout << "This will output '2'" << vvf.at_signed (1) << std::endl;
+  std::cout << "This will output '3'" << vvf.at_signed (2) << std::endl;
+  std::cout << "This will cause an exception: " << vvf.at_signed (3) << std::endl;
+} catch const (const std::out_of_range& e) { /* Too positive (or too negative) */ }
+```
+
+`at_signed()` was added to access a quantity that was naturally indexed with a [-m +m] range of indices (the order of a spherical harmonic function).
+Internally, it uses `.at()` and iterators.
+It is a templated function that is only enabled for signed index type (`at_signed(1u)` will not compile)).
+
+
+`c_at_signed()` is the `const` version of `at_signed()` for situations where you need to read from your `vvec` with a promise not to change any of the elements.
+
 ## Arithmetic operators
 
 You can use arithmetic operators on `vvec` objects with their operations being applied element wise. operations with other `vvec` objects and with scalars are all supported and should work as expected.
@@ -162,27 +211,40 @@ If you want to set your vvec values from another container, such as a `std::vect
 
 ```c++
 template <typename Container>
-std::enable_if_t<morph::is_copyable_container<Container>::value, void>
-void set_from (const Container& c)
+std::enable_if_t<morph::is_copyable_container<Container>::value
+                 && !std::is_same<std::decay_t<Container>, S>::value, void>
+set_from (const Container& c)
 {
     this->resize (c.size());
     std::copy (c.begin(), c.end(), this->begin());
 }
 ```
 
-As long as you pass in a 'copyable container' (which means a `vector`, `array`, `deque`, `vvec`, `vec` or `set`, but *not* a `map`) then this will resize your `vvec` to match the passed in container and then std::copy the values into your `vvec`.
+As long as you pass in a 'copyable container' (which means a `vector`, `array`, `deque`, `vvec`, `vec` or `set`, but *not* a `map`) then this will resize your `vvec` to match the passed in container and then std::copy the values into your `vvec`. Note that this is *not* enabled if the copyable container type is the same as the element type 'S' of the `vvec`, which may occur if you have a '`vvec` of `vec`s' and you `set_from` a `vec`. In that case, you would set all elements of the `vvec` to the passed in `vec`.
 
 #### Setting all the elements of a vvec to the same value
 
 All of these functions set all the elements of your `vvec` to a single value.
 
 ```c++
-void set_from (const _S& v);
+void set_from (const Sy& v);
 void zero();
 void set_max();
 void set_lowest();
 ```
-The `set_from` overload fills all elements of the `morph::vvec` with `v`.
+The `set_from` overload fills all elements of the `morph::vvec` with `v`. For example:
+
+```c++
+morph::vvec<int> vi = { 1, 2, 3 };
+vi.set_from (4);
+std::cout << vi << std::endl; // output: (4, 4, 4)
+```
+This works even if you have a vvec of array types:
+```c++
+morph::vvec< morph::vec<float, 2> > vvecofvecs(2);
+vvecofvecs.set_from (morph::vec<float, 2>{3, 4});
+std::cout << vvecofvecs << std::endl; // output: ((3, 4), (3, 4))
+```
 
 `zero()`, `set_max()` and `set_lowest()` fill all elements with `S{0}`, the maximum possible value for the type and the lowest possible value, respectively.
 
@@ -208,13 +270,20 @@ std::cout << vv << std::endl;           // output: (1,2,3)
 ### Numpy clones
 
 ```c++
-void linspace (const _S start, const _S2 stop, const size_t num=0);
-void arange (const _S start, const _S2 stop, const _S2 increment);
+void linspace (const Sy start, const Sy2 stop, const size_t num=0);
+void arange (const Sy start, const Sy2 stop, const Sy2 increment);
 ```
 
-Python Numpy-like functions to fill the `morph::vvec` with sequences of
-numbers.  `linspace` fills the `vvec` with `num` values in a sequence
-from `start` to `stop`. `arange` resizes the `vvec` and fills it with elements starting
+Python Numpy-like functions to fill the `morph::vvec` with sequences
+of numbers.  `linspace` fills the `vvec` with `num` values in a
+sequence from `start` to `stop`. If `num` is 0, then the vvec's size
+is not changed and it is filled with an evenly spaced sequence of
+values from `start` to `stop`. This behaviour differs from Python,
+which would return an empty array for `num = 0`. However, the result
+of `linspace (start, stop, 1)` matches Python: a single-element `vvec`
+containing only the start value.
+
+`arange` resizes the `vvec` and fills it with elements starting
 with `start` and ending with `stop` incrementing by `increment`.
 
 ### Random numbers
@@ -254,6 +323,26 @@ For example:
 morph::vvec<int> vi = {1,2,3};
 morph::vvec<float> vf = vi.as_float(); // Note: new memory is used for the new object
 ```
+### Get first and last elements in the vvec
+
+Get first (`0`th) and last (`size()-1` th) elements in the vvec. If vvec is of zero size, returns a 2 element vvec containing zeros.
+```c++
+morph::vvec<int> vv3 = { 1, 2, 3 };
+morph::vvec<int> fl3 = vv3.firstlast();
+std::cout << fl3; // (1, 3)
+
+morph::vvec<int> vv2 = { 1, 2 };
+morph::vvec<int> fl2 = vv2.firstlast();
+std::cout << fl2; // (1, 2)
+
+morph::vvec<int> vv1 = { 2 };
+morph::vvec<int> fl1 = vv1.firstlast();
+std::cout << fl1; // (2, 2)
+
+morph::vvec<int> vv0 = {};
+morph::vvec<int> fl0 = vv1.firstlast();
+std::cout << fl0; // (0, 0)
+```
 
 ### String output
 
@@ -272,10 +361,10 @@ gives output `(1,2,3)`.
 ### Length, lengthen, shorten
 
 ```c++
-template <typename _S=S>
-_S length() const;                     // return the vector length
-_S length_sq() const;                  // return the vector length squared
-_S sos() const;                        // also length squared. See header for difference
+template <typename Sy=S>
+Sy length() const;                     // return the vector length
+Sy length_sq() const;                  // return the vector length squared
+Sy sos() const;                        // also length squared. See header for difference
 // Enabled only for non-integral S:
 vvec<S> shorten (const S dl) const;    // return a vector shortened by length dl
 vvec<S> lengthen (const S dl) const;   // return a vector lengthened by length dl
@@ -293,6 +382,15 @@ morph::vvec<float> v = { 1, 2, 3 };
 morph::range<float> r = v.range();
 std::cout << "vvec max: " << r.max << " and min: " << r.min << std::endl;
 ```
+If the contained type is itself a vector, then `vvec::range()` returns the shortest vector as min and the longest as max.
+
+```c++
+morph::vvec<morph::vec<int, 2>> v = { {-1, -3},   {-2, 4},  {3, 5} };
+morph::range<morph::vec<int, 2>> r = v.range();
+std::cout << "r.min: " << r.min; // {-1, -3}
+std::cout << "r.max: " << r.max; // {3, 5}
+```
+
 To re-scale or renormalize the values in the `vvec`:
 ```c++
 void renormalize();  // make vector length 1
@@ -311,13 +409,25 @@ the range [-1,1].
 
 Note that these functions use a template to ensure they are only enabled for non-integral types:
 ```c++
-template <typename _S=S, std::enable_if_t<!std::is_integral<std::decay_t<_S>>::value, int> = 0 >
+template <typename Sy=S, std::enable_if_t<!std::is_integral<std::decay_t<Sy>>::value, int> = 0 >
 ```
 
 Check whether your renormalized vector is a unit vector:
 
 ```c++
 bool checkunit() const; // return true if length is 1 (to within vvec::unitThresh = 0.001)
+```
+### Extent
+
+The 'extent' of a vvec of scalar values is the same as its range (and `vvec<S>::extent()` simply sub-calls `vvec<S>::range()` for scalar `S`).
+However, for a vvec of vector values, the extent returns a range of two vectors which define a volume that will enclose all the vectors contained in the vvec.
+The vectors values must be given in some fixed size type, such as `std::array<>` or `morph::vec<>` (otherwise the function will not compile).
+
+```c++
+morph::vvec<morph::vec<int, 2>> v = { {-1, -3},   {-2, 4},  {3, 5} };
+morph::range<morph::vec<int, 2>> r = v.extent();
+std::cout << "r.min: " << r.min; // {-2, -3}
+std::cout << "r.max: " << r.max; // {3, 5}
 ```
 
 ### Finding elements
@@ -383,14 +493,14 @@ void prune_nan_inplace();
 ### Simple statistics
 
 ```c++
-// These template functions are declared with a type _S:
-template<typename _S=S>
+// These template functions are declared with a type Sy:
+template<typename Sy=S>
 
-_S mean() const;          // The arithmetic mean
-_S variance() const;      // The variance
-_S std() const;           // The standard deviation
-_S sum() const;           // The sum of all elements
-_S product() const;       // The product of the elements
+Sy mean() const;          // The arithmetic mean
+Sy variance() const;      // The variance
+Sy std() const;           // The standard deviation
+Sy sum() const;           // The sum of all elements
+Sy product() const;       // The product of the elements
 ```
 
 ### Maths functions
@@ -399,10 +509,10 @@ Raising elements to a **power**.
 ```c++
 vvec<S> pow (const S& p) const;          // raise all elements to the power p, returning result in new vec
 void pow_inplace (const S& p);           // in-place version which operates on the existing data in *this
-template<typename _S=S>
-vec<S, N> pow (const vvec<_S>& p) const; // Raise each element in *this to the power of the matching element in p (which must be same size)
-template<typename _S=S>
-void pow_inplace (const vvec<_S>& p);    // in-place version
+template<typename Sy=S>
+vec<S, N> pow (const vvec<Sy>& p) const; // Raise each element in *this to the power of the matching element in p (which must be same size)
+template<typename Sy=S>
+void pow_inplace (const vvec<Sy>& p);    // in-place version
 ```
 
 The **signum function** is 1 if a value is >0; -1 if the value is <0 and 0 if the value is 0.
@@ -453,14 +563,14 @@ void abs_inplace();
 
 The **scalar product** (also known as inner product or dot product) can be computed for two `vvec` instances, which must have equal size (otherwise a runtime error is thrown).
 ```c++
-template<typename _S=S>
-S dot (const vvec<_S>& v) const
+template<typename Sy=S>
+S dot (const vvec<Sy>& v) const
 ```
 
 The **cross product** is defined here only for `vvec` of size 3.
 
 If `N` is 2, then v x w is defined to be v_x w_y - v_y w_x and for N=3, see your nearest vector maths textbook. The function signatures are
 ```c++
-template<typename _S=S>
-S cross (const vvec<_S>& w) const;
+template<typename Sy=S>
+S cross (const vvec<Sy>& w) const;
 ```

@@ -5,8 +5,6 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
-
-#include <morph/Scale.h>
 #include <morph/vec.h>
 #include <morph/Visual.h>
 #include <morph/VisualDataModel.h>
@@ -32,11 +30,11 @@ int main()
     // the constructor.
     morph::Grid grid(Nside, Nside, grid_spacing);
 
-    std::cout << "Number of pixels in grid:" << grid.n << std::endl;
+    std::cout << "Number of pixels in grid:" << grid.n() << std::endl;
 
     // Make some dummy data (a sine wave) to make an interesting surface
-    std::vector<float> data(grid.n, 0.0);
-    for (unsigned int ri=0; ri<grid.n; ++ri) {
+    std::vector<float> data(grid.n(), 0.0);
+    for (unsigned int ri=0; ri<grid.n(); ++ri) {
         data[ri] =  static_cast<double>(std::rand()) / RAND_MAX; // Range 0->1
     }
 
@@ -67,7 +65,7 @@ int main()
     gv = std::make_unique<morph::GridVisual<float>>(&grid, offset);
     v.bindmodel (gv);
     gv->gridVisMode = morph::GridVisMode::Columns;
-    gv->interpolate_colour_sides = true;
+    gv->interpolate_colour_sides (true);
     gv->setScalarData (&data);
     gv->cm.setType (morph::ColourMapType::Twilight);
     gv->addLabel ("GridVisMode::Columns, interpolated sides", morph::vec<float>({0,-0.1,0}), morph::TextFeatures(0.05f));

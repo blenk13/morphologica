@@ -8,7 +8,7 @@
 #else
 #include <morph/PointRowsVisual.h>
 #endif
-#include <morph/Scale.h>
+#include <morph/scale.h>
 #include <morph/vec.h>
 #include <iostream>
 #include <fstream>
@@ -19,9 +19,9 @@ int main()
 {
     int rtn = -1;
 #ifdef MESH
-    morph::Visual v(1024, 768, "morph::PointRowsMeshVisual", {-0.8,-0.8}, {.05,.05,.05}, 2.0f, 0.01f);
+    morph::Visual v(1024, 768, "morph::PointRowsMeshVisual");
 #else
-    morph::Visual v(1024, 768, "morph::PointRowsVisual", {-0.8,-0.8}, {.05,.05,.05}, 2.0f, 0.01f);
+    morph::Visual v(1024, 768, "morph::PointRowsVisual");
 #endif
     v.zNear = 0.001;
     v.showCoordArrows = true;
@@ -29,7 +29,7 @@ int main()
 
     try {
         morph::vec<float, 3> offset = { 0.0, 0.0, 0.0 };
-        morph::Scale<float> scale;
+        morph::scale<float> scale;
         scale.setParams (1.0, 0.0);
 
         std::vector<morph::vec<float, 3>> points;

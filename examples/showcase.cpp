@@ -143,8 +143,8 @@ int main()
         constexpr morph::vec<float, 2> grid_spacing = {0.05f, 0.05f};
         morph::Grid grid(Nside, Nside, grid_spacing);
         // Data
-        std::vector<float> data(grid.n, 0.0);
-        for (unsigned int ri=0; ri<grid.n; ++ri) {
+        std::vector<float> data(grid.n(), 0.0);
+        for (unsigned int ri=0; ri<grid.n(); ++ri) {
             auto coord = grid[ri];
             float x = coord[0];
             float y = coord[1];
@@ -154,7 +154,6 @@ int main()
         auto gv = std::make_unique<morph::GridVisual<float>>(&grid, offset);
         v.bindmodel (gv);
         gv->gridVisMode = morph::GridVisMode::Columns;
-        //gv->interpolate_colour_sides = true;
         gv->setScalarData (&data);
         gv->cm.setType (morph::ColourMapType::Twilight);
         gv->addLabel ("morph::GridVisual", morph::vec<float>({0,-0.1,0}), morph::TextFeatures(0.05));
@@ -188,7 +187,7 @@ int main()
         auto gv3 = std::make_unique<morph::GridVisual<float>>(&g2, morph::vec<float>({0.2,-1,0}));
         v.bindmodel (gv3);
         gv3->gridVisMode = morph::GridVisMode::Columns;
-        gv3->interpolate_colour_sides = true;
+        gv3->interpolate_colour_sides (true);
         gv3->setScalarData (&image_data);
         gv3->cm.setType (morph::ColourMapType::Plasma);
         gv3->zScale.setParams (0.1, 0); // Reduce height in 'z'

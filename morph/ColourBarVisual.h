@@ -6,7 +6,7 @@
 
 #include <morph/VisualModel.h>
 #include <morph/mathconst.h>
-#include <morph/Scale.h>
+#include <morph/scale.h>
 #include <morph/vec.h>
 #include <morph/GraphVisual.h> // share some features from GraphVisual
 
@@ -183,7 +183,7 @@ namespace morph {
                     // Labels above
                     for (unsigned int i = 0; i < this->tick_posns.size(); ++i) {
                         std::string s = morph::GraphVisual<F, glver>::graphNumberFormat (this->ticks[i]);
-                        auto lbl = std::make_unique<morph::VisualTextModel<glver>> (this->parentVis, this->get_tprog(this->parentVis), this->tf);
+                        auto lbl = this->makeVisualTextModel (this->tf);
                         morph::TextGeometry geom = lbl->getTextGeometry (s);
                         this->ticklabelheight = geom.height() > this->ticklabelheight ? geom.height() : this->ticklabelheight;
                         this->ticklabelwidth = geom.width() > this->ticklabelwidth ? geom.width() : this->ticklabelwidth;
@@ -199,7 +199,7 @@ namespace morph {
                     // Labels left
                     for (unsigned int i = 0; i < this->tick_posns.size(); ++i) {
                         std::string s = morph::GraphVisual<F, glver>::graphNumberFormat (this->ticks[i]);
-                        auto lbl = std::make_unique<morph::VisualTextModel<glver>> (this->parentVis, this->get_tprog(this->parentVis), this->tf);
+                        auto lbl = this->makeVisualTextModel (this->tf);
                         morph::TextGeometry geom = lbl->getTextGeometry (s);
                         this->ticklabelheight = geom.height() > this->ticklabelheight ? geom.height() : this->ticklabelheight;
                         this->ticklabelwidth = geom.width() > this->ticklabelwidth ? geom.width() : this->ticklabelwidth;
@@ -218,7 +218,7 @@ namespace morph {
                     // Labels below
                     for (unsigned int i = 0; i < this->tick_posns.size(); ++i) {
                         std::string s = morph::GraphVisual<F, glver>::graphNumberFormat (this->ticks[i]);
-                        auto lbl = std::make_unique<morph::VisualTextModel<glver>> (this->parentVis, this->get_tprog(this->parentVis), this->tf);
+                        auto lbl = this->makeVisualTextModel (this->tf);
                         morph::TextGeometry geom = lbl->getTextGeometry (s);
                         this->ticklabelheight = geom.height() > this->ticklabelheight ? geom.height() : this->ticklabelheight;
                         this->ticklabelwidth = geom.width() > this->ticklabelwidth ? geom.width() : this->ticklabelwidth;
@@ -234,7 +234,7 @@ namespace morph {
                     // Labels right
                     for (unsigned int i = 0; i < this->tick_posns.size(); ++i) {
                         std::string s = morph::GraphVisual<F, glver>::graphNumberFormat (this->ticks[i]);
-                        auto lbl = std::make_unique<morph::VisualTextModel<glver>> (this->parentVis, this->get_tprog(this->parentVis), this->tf);
+                        auto lbl = this->makeVisualTextModel (this->tf);
                         morph::TextGeometry geom = lbl->getTextGeometry (s);
                         this->ticklabelheight = geom.height() > this->ticklabelheight ? geom.height() : this->ticklabelheight;
                         this->ticklabelwidth = geom.width() > this->ticklabelwidth ? geom.width() : this->ticklabelwidth;
@@ -257,7 +257,7 @@ namespace morph {
 
             float ticksgap = this->tickstyle == tickstyle::ticksin ? 0.0f : this->ticklength;
 
-            auto lbl = std::make_unique<morph::VisualTextModel<glver>> (this->parentVis, this->get_tprog(this->parentVis), this->tf);
+            auto lbl = this->makeVisualTextModel (this->tf);
             morph::TextGeometry geom = lbl->getTextGeometry (this->label);
             morph::vec<float> lblpos = {0,0,0};
 
@@ -343,9 +343,9 @@ namespace morph {
         //! The ColourMap to show (copy in)
         morph::ColourMap<F> cm;
         //! A copy of the scaling for the data. This will map data_min -> data_max to 0->1
-        morph::Scale<F> scale;
+        morph::scale<F> scale;
         //! A scaling between colourbar value and model position. Scales 0->1 to 0->this->length
-        morph::Scale<F> tickscale;
+        morph::scale<F> tickscale;
         //! The width of the ColourBar
         float width = 0.1f;
         //! The length of the ColourBar (the colours vary along this direction)

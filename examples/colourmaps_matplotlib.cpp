@@ -5,7 +5,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
-#include <morph/Scale.h>
+#include <morph/scale.h>
 #include <morph/vec.h>
 #include <morph/Visual.h>
 #include <morph/ColourBarVisual.h>
@@ -14,13 +14,11 @@
 
 int main()
 {
-    // Contructor args are width, height, title, coordinate arrows offset, cooridnate
-    // arrows lengths, coord arrow thickness, coord arrow font size (0 means no labels)
     std::string title_str = "ColourMaps from Python matplotlib";
     morph::Visual v(1000, 360, title_str);
     v.setSceneTrans (morph::vec<float,3>{ float{-1.07782}, float{-0.247493}, float{-1.70001} });
 
-    morph::Scale<float> scale1;
+    morph::scale<float> scale1;
     scale1.compute_scaling (0, 1); // Simply maps 0->1 to 0->1!
 
     morph::vec<float, 3> offset = { 0.0f, 0.0f, 0.0f };

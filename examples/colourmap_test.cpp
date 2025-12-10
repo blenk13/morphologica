@@ -10,7 +10,6 @@
 #include <vector>
 #include <cmath>
 
-#include <morph/Scale.h>
 #include <morph/vec.h>
 #include <morph/Visual.h>
 #include <morph/VisualDataModel.h>
@@ -30,8 +29,8 @@ int main()
     morph::Grid grid(Nside_w, Nside_h, grid_spacing);
 
     // Our data is a ramp with a sine wave embossed on it
-    std::vector<float> data(grid.n, 0.0);
-    for (unsigned int ri=0; ri<grid.n; ++ri) {
+    std::vector<float> data(grid.n(), 0.0);
+    for (unsigned int ri=0; ri<grid.n(); ++ri) {
         auto x = grid[ri][0];
         auto y = grid[ri][1];
         data[ri] = x / grid.width() + 0.1f * (y / grid.height()) * (y / grid.height()) * std::sin (120.0f * x);
